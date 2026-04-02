@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using RdpManager.Services;
 
 namespace RdpManager.Models
 {
@@ -64,6 +65,7 @@ namespace RdpManager.Models
 
                 _port = value;
                 OnPropertyChanged("Port");
+                OnPropertyChanged("PlatformLabel");
             }
         }
 
@@ -101,6 +103,11 @@ namespace RdpManager.Models
         public string MaskedPassword
         {
             get { return string.IsNullOrEmpty(Password) ? string.Empty : "********"; }
+        }
+
+        public string PlatformLabel
+        {
+            get { return ConnectionClassifier.GetPlatformLabel(Port); }
         }
 
         public bool IsFavorite
@@ -175,6 +182,7 @@ namespace RdpManager.Models
 
                 _sourceStatus = value;
                 OnPropertyChanged("SourceStatus");
+                OnPropertyChanged("StatusLabel");
             }
         }
 
@@ -250,7 +258,13 @@ namespace RdpManager.Models
 
                 _isProviderManaged = value;
                 OnPropertyChanged("IsProviderManaged");
+                OnPropertyChanged("StatusLabel");
             }
+        }
+
+        public string StatusLabel
+        {
+            get { return ConnectionClassifier.GetLocalStatusLabel(this); }
         }
 
         private void OnPropertyChanged(string propertyName)

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using RdpManager.Services;
 
 namespace RdpManager.Models
 {
@@ -84,15 +85,14 @@ namespace RdpManager.Models
             get { return Remote == null ? string.Empty : Remote.Status; }
         }
 
+        public string StatusDisplay
+        {
+            get { return ConnectionClassifier.ToDisplayStatus(Status); }
+        }
+
         public string Platform
         {
-            get
-            {
-                var port = Port ?? string.Empty;
-                return string.Equals(port.Trim(), "22", System.StringComparison.OrdinalIgnoreCase)
-                    ? "Linux"
-                    : "Windows";
-            }
+            get { return ConnectionClassifier.GetPlatformLabel(Port); }
         }
 
         public string Location
