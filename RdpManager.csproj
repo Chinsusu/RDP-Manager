@@ -48,6 +48,12 @@
     <Reference Include="System.Data">
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Runtime.Serialization">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Security">
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System.Windows.Forms">
       <Private>False</Private>
     </Reference>
@@ -81,10 +87,19 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Models\AppSettings.cs" />
+    <Compile Include="Models\CloudminiAccountSummary.cs" />
+    <Compile Include="Models\CloudminiSyncOptions.cs" />
+    <Compile Include="Models\CloudminiSyncPreviewItem.cs" />
+    <Compile Include="Models\CloudminiSyncResult.cs" />
+    <Compile Include="Models\CloudminiVps.cs" />
     <Compile Include="Models\RdpEntry.cs" />
+    <Compile Include="Services\CloudminiClient.cs" />
+    <Compile Include="Services\CloudminiSyncService.cs" />
     <Compile Include="Services\CsvStorage.cs" />
     <Compile Include="Services\MetadataStorage.cs" />
     <Compile Include="Services\RdpLauncher.cs" />
+    <Compile Include="Services\SettingsStorage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

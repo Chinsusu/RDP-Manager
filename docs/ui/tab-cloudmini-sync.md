@@ -52,6 +52,10 @@ Columns:
 - Updated entries count
 - Skipped entries count
 - Conflict entries count
+- Platform filter chips:
+  - `All`
+  - `Windows`
+  - `Linux`
 - Option:
   - Keep local HostName
   - Overwrite password from provider
@@ -99,6 +103,9 @@ Columns:
 ## Data rules
 
 - Cloudmini item phai duoc danh dau source = `cloudmini`.
+- Heuristic platform hien tai:
+  - `port = 22` -> `Linux`
+  - con lai -> `Windows`
 - Merge key uu tien:
   - `SourceProvider + SourceId`
   - fallback `Host + Port + User`
@@ -118,3 +125,5 @@ Columns:
 - Remote VPS list duoc tai va hien thi day du.
 - Sync khong tao duplicate neu VPS da ton tai.
 - User nhin thay ro ket qua sync.
+- User co the filter VPS theo `Windows` / `Linux` truoc khi sync.
+- `Sync all` chi ap dung tren tap item dang hien thi theo filter hien tai.

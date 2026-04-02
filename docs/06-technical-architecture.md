@@ -7,8 +7,17 @@ Project hien tai la WPF app nho, logic phan lon nam trong `MainWindow.xaml.cs`, 
 - `CsvStorage`
 - `MetadataStorage`
 - `RdpLauncher`
+- `CloudminiClient`
+- `CloudminiSyncService`
+- `SettingsStorage`
 
 Cach nay du cho Phase 1, nhung se kho scale khi them integration.
+
+Trang thai thuc te hien tai:
+
+- Phase 2 MVP da chay duoc trong codebase hien tai.
+- UI da co nhieu state hon truoc: local filter, cloud filter, pagination, sync preview, token settings.
+- `MainWindow.xaml.cs` hien dang gánh ca coordination logic UI va workflow logic, day la diem can tach tiep trong buoc hardening.
 
 ## Target architecture for Phase 2+
 

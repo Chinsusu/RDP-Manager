@@ -34,6 +34,9 @@ Use:
 
 - fetch all VPS
 - fetch by id, ip, or order_id in future if needed
+- classify nhanh `Windows` / `Linux` trong UI theo heuristic tam thoi:
+  - `port = 22` -> `Linux`
+  - moi port khac -> `Windows`
 
 Expected fields from example:
 
@@ -118,6 +121,12 @@ sequenceDiagram
    - conflict
 5. Show preview summary.
 6. Persist changes only after user confirm.
+
+## UI behavior implemented in Phase 2 MVP
+
+- Cloudmini Sync dung filter chips `All / Windows / Linux`, khong dung dropdown.
+- `Sync all` ap dung tren tap item dang hien thi theo filter hien tai.
+- Local list dung cung heuristic platform de user co the doi qua lai giua Windows/Linux ngay sau khi sync.
 
 ## Conflict scenarios
 

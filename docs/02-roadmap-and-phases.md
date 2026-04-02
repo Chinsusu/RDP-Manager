@@ -25,7 +25,7 @@ Known tech debt:
 
 ## Phase 2: Cloudmini sync
 
-Status: next
+Status: in progress, MVP da co
 
 Target:
 
@@ -51,6 +51,20 @@ Deliverables:
 - Provider metadata cho `RdpEntry`
 - Manual sync
 - Sync result summary
+- Platform filter `All / Windows / Linux`
+- Local list pagination
+- Explicit connect flow, khong auto launch bang double-click
+
+Current implemented scope:
+
+- Test token qua `GET /account`
+- Fetch VPS qua `GET /vps`
+- Preview sync va merge vao local RDP list
+- Luu token theo user machine neu bat remember
+- Filter VPS Linux/Windows theo heuristic `port = 22`
+- Filter local list Linux/Windows bang cung heuristic
+- Copy nhanh `Host`, `User`, `Password` tu local list
+- Pagination local list `10 items/page`
 
 Acceptance criteria:
 
@@ -58,6 +72,8 @@ Acceptance criteria:
 - App load duoc `GET /vps`
 - App import hoac update duoc danh sach local
 - App hien ro item moi, item duoc update, item bo qua
+- User co the dieu huong UI ma khong bi ket o Settings
+- Local list khong tu mo RDP khi double-click row
 
 ## Phase 3: Cloudmini actions
 
@@ -97,7 +113,7 @@ Target:
 4. Implement Cloudmini Sync tab UI.
 5. Implement sync preview and merge.
 6. Manual QA on real Cloudmini account.
-7. Release Phase 2.
+7. Tach bot logic khoi `MainWindow.xaml.cs`, retarget len `.NET Framework 4.8.1`, roi release Phase 2.
 
 ## Change control rule
 
