@@ -44,7 +44,7 @@ namespace RdpManager.Services
                 .Where(entry =>
                     entry != null &&
                     MatchesNavigationFilter(entry, navigationFilter) &&
-                    ConnectionClassifier.MatchesPlatform(entry.Port, platformFilter) &&
+                    ConnectionClassifier.MatchesPlatform(entry.Port, entry.User, platformFilter) &&
                     ConnectionClassifier.MatchesLocalStatus(entry, statusFilter) &&
                     MatchesQuery(entry, normalizedQuery));
 

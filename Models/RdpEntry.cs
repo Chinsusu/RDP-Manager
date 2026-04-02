@@ -81,6 +81,7 @@ namespace RdpManager.Models
 
                 _user = value;
                 OnPropertyChanged("User");
+                OnPropertyChanged("PlatformLabel");
             }
         }
 
@@ -107,7 +108,7 @@ namespace RdpManager.Models
 
         public string PlatformLabel
         {
-            get { return ConnectionClassifier.GetPlatformLabel(Port); }
+            get { return ConnectionClassifier.GetPlatformLabel(Port, User); }
         }
 
         public bool IsFavorite

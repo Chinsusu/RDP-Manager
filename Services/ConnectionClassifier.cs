@@ -11,19 +11,29 @@ namespace RdpManager.Services
             return string.Equals((port ?? string.Empty).Trim(), "22", StringComparison.OrdinalIgnoreCase);
         }
 
-        public static string GetPlatformLabel(string port)
+        public static bool IsLinuxUser(string user)
         {
-            return IsLinuxPort(port) ? "Linux" : "Windows";
+            return string.Equals((user ?? string.Empty).Trim(), "root", StringComparison.OrdinalIgnoreCase);
         }
 
-        public static bool MatchesPlatform(string port, PlatformFilter filter)
+        public static bool IsLinuxConnection(string port, string user)
+        {
+            return IsLinuxUser(user) || IsLinuxPort(port);
+        }
+
+        public static string GetPlatformLabel(string port, string user)
+        {
+            return IsLinuxConnection(port, user) ? "Linux" : "Windows";
+        }
+
+        public static bool MatchesPlatform(string port, string user, PlatformFilter filter)
         {
             if (filter == PlatformFilter.All)
             {
                 return true;
             }
 
-            var isLinux = IsLinuxPort(port);
+            var isLinux = IsLinuxConnection(port, user);
             return filter == PlatformFilter.Linux ? isLinux : !isLinux;
         }
 
