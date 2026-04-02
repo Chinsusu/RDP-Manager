@@ -1,0 +1,840 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Cloudmini API Documentation",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://client.cloudmini.net/api/v2",
+      "description": "Cloudmini API v2"
+    }
+  ],
+  "security": [
+    {
+      "Token": []
+    }
+  ],
+  "paths": {
+    "/account": {
+      "get": {
+        "summary": "Get account balance information",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": false,
+                  "msg": "",
+                  "data": [
+                    {
+                      "balance": 123456,
+                      "credit": 123123
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access Denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Access Denied",
+                  "data": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order_config": {
+      "get": {
+        "summary": "Get the available order options based on the given configuration",
+        "description": "Retrieve information about order configurations. If no type is specified, the server will return all available options. Use the data from this response to execute an `/order` request for each type of service.",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Type of order include in this list ['normal', 'yt', 'nn', 'nnx', 'custom', 'promo', 'proxy', 'proxy-v6', 'proxy-res', 'proxy-res-static', 'budgetV4', 'budgetRes']",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response (This is just an example response, the data may changed in real-time)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": false,
+                  "msg": "",
+                  "data": [
+                    {
+                      "type": "normal",
+                      "plan_id": [
+                        "vps1",
+                        "vps2"
+                      ],
+                      "region": [
+                        "California",
+                        "Texas"
+                      ],
+                      "os": [
+                        "win2012",
+                        "win2019"
+                      ]
+                    },
+                    {
+                      "type": "normal",
+                      "plan_id": [
+                        "nn1",
+                        "nn2",
+                        "nn3",
+                        "nn4"
+                      ],
+                      "os": [
+                        "win2012",
+                        "win2016"
+                      ],
+                      "region": [
+                        "Virginia",
+                        "Singapore"
+                      ]
+                    },
+                    {
+                      "type": "normal",
+                      "plan_id": [
+                        "yt1",
+                        "yt2",
+                        "yt3",
+                        "yt4"
+                      ],
+                      "os": [
+                        "win2012",
+                        "win2016"
+                      ],
+                      "region": [
+                        "Virginia",
+                        "Oregon"
+                      ]
+                    },
+                    {
+                      "type": "custom",
+                      "cpu": "int[1-16]",
+                      "ram": "int[1-32]",
+                      "disk": "int[12-200]",
+                      "os": [
+                        "win2012",
+                        "win2016"
+                      ],
+                      "region": [
+                        "California",
+                        "Texas"
+                      ]
+                    },
+                    {
+                      "type": "proxy",
+                      "region": [
+                        "California",
+                        "Texas"
+                      ]
+                    },
+                    {
+                      "type": "proxy-v6",
+                      "region": [
+                        "California",
+                        "Texas"
+                      ]
+                    },
+                    {
+                      "type": "proxy-res",
+                      "region": [
+                        "California",
+                        "Texas"
+                      ]
+                    },
+                    {
+                      "type": "proxy-res-static",
+                      "region": [
+                        "US",
+                        "AT"
+                      ],
+                      "isp": [
+                        "AT&T",
+                        "CenturyLink",
+                        "Video-Broadcast GmbH",
+                        "Lietpark Communications"
+                      ],
+                      "protocol": [
+                        "HTTP",
+                        "SOCKS5"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order": {
+      "get": {
+        "summary": "Get order details",
+        "description": "Retrieve information about a specific order",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Order ID",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": false,
+                  "msg": "",
+                  "data": [
+                    {
+                      "order_id": 12345,
+                      "order_status": "success or pending",
+                      "price": 100,
+                      "service_id": 54321,
+                      "ip": "192.168.1.1",
+                      "region": "California",
+                      "isp": "(only available with type=proxy_res_static)"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access Denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Access Denied",
+                  "data": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new order",
+        "description": "Create order using the data from the `/order_config` response as parameters of this request, please note that the examples bellow is just example, you have to check the real-time parameter in `/order_config` ",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "examples": {
+                "normal": {
+                  "summary": "Example for normal order",
+                  "value": {
+                    "type": "normal",
+                    "plan_id": "vps1",
+                    "os": "win2012",
+                    "region": "California"
+                  }
+                },
+                "yt": {
+                  "summary": "Example for yt order",
+                  "value": {
+                    "type": "normal",
+                    "plan_id": "yt3",
+                    "os": "win2012",
+                    "region": "California"
+                  }
+                },
+                "custom": {
+                  "summary": "Example for custom order",
+                  "value": {
+                    "type": "custom",
+                    "cpu": 1,
+                    "ram": 4,
+                    "disk": 20,
+                    "os": "win2019",
+                    "region": "Texas"
+                  }
+                },
+                "proxy": {
+                  "summary": "Example for proxy order",
+                  "value": {
+                    "type": "proxy",
+                    "region": "New York"
+                  }
+                },
+                "proxy-v6": {
+                  "summary": "Example for proxy-v6 order",
+                  "value": {
+                    "type": "proxy-v6",
+                    "region": "New York"
+                  }
+                },
+                "proxy_res_static": {
+                  "summary": "Example for proxy_res_static order",
+                  "value": {
+                    "type": "proxy-res-static",
+                    "region": "US",
+                    "isp": "AT&T"
+                  }
+                },
+                "budgetV4": {
+                  "summary": "Example for budgetV4 order",
+                  "value": {
+                    "type": "budgetV4",
+                    "region": "Thailand"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": false,
+                  "msg": "",
+                  "data": [
+                    {
+                      "order_id": 12345,
+                      "order_status": "pending",
+                      "price": 100,
+                      "service_id": 54321,
+                      "ip": "192.168.1.1",
+                      "region": "California",
+                      "isp": "(only available with type=proxy-res-static)"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access Denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Access Denied",
+                  "data": []
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Account is processing another transaction",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Account is processing another transaction",
+                  "data": []
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Something went wrong",
+                  "data": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vps": {
+      "get": {
+        "summary": "Get VPS information",
+        "description": "If no parameters being passed, it will return all VPS",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "VPS ID, if multiple order_id seperate them with commas",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ip",
+            "in": "query",
+            "description": "VPS IP address, if multiple order_id seperate them with commas",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "query",
+            "description": "List of order IDs, if multiple order_id seperate them with commas",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": false,
+                  "msg": "",
+                  "data": [
+                    {
+                      "pk": 121502,
+                      "ip": "116.118.44.60",
+                      "user": "user",
+                      "password": "password",
+                      "created_at": "2022-08-30T08:53:00.427543Z",
+                      "expired_at": "2023-12-28T08:53:00.426714Z",
+                      "port": "3389",
+                      "cpu": 1,
+                      "ram": 1,
+                      "disk": 12,
+                      "price": 1,
+                      "location": "Việt Nam - Viettel",
+                      "status": "online"
+                    },
+                    {
+                      "pk": 122436,
+                      "ip": "51.79.234.11",
+                      "user": "user",
+                      "password": "password",
+                      "created_at": "2022-09-05T19:54:00.224304Z",
+                      "expired_at": "2024-01-05T19:54:00.223750Z",
+                      "port": "12345",
+                      "cpu": 2,
+                      "ram": 2,
+                      "disk": 15,
+                      "price": 1,
+                      "location": "Singapore",
+                      "status": "online"
+                    }
+                  ],
+                  "pagination": {
+                    "last_page": 1,
+                    "current_page": 1,
+                    "total_entries": 6,
+                    "each_page": 25
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access Denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Access Denied",
+                  "data": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/proxy": {
+      "get": {
+        "summary": "Check proxy details",
+        "description": "If no id or ip being passed, it will return all Proxy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Proxy ID, if multiple order_id seperate them with commas",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ip",
+            "in": "query",
+            "description": "Proxy IP address, if multiple order_id seperate them with commas",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "query",
+            "description": "Order ID, if multiple order_id seperate them with commas",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": false,
+                  "msg": "",
+                  "data": [
+                    {
+                      "pk": 12345,
+                      "ip": "192.168.1.1",
+                      "user": "proxy_user",
+                      "password": "proxy_password",
+                      "created_at": "2022-08-30T08:53:00.427543Z",
+                      "expired_at": "2023-12-28T08:53:00.426714Z",
+                      "price": 1,
+                      "location": "California",
+                      "https": "12348",
+                      "socks": "32165",
+                      "status": "online"
+                    }
+                  ],
+                  "pagination": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access Denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Access Denied",
+                  "data": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/action": {
+      "get": {
+        "summary": "Get available actions",
+        "description": "Retrieve a list of available actions",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": false,
+                  "msg": "",
+                  "data": [
+                    "renew",
+                    "reboot",
+                    "start",
+                    "stop",
+                    "reset_password",
+                    "reinstall",
+                    "change_ip"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access Denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Access Denied",
+                  "data": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Execute action",
+        "description": "Execute a specific action on a service",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/action_body"
+              },
+              "example": {
+                "action": "renew",
+                "id": 123
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": false,
+                  "msg": "",
+                  "data": [
+                    {
+                      "$ref": "#/components/schemas/Vps"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid action or missing parameters",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Invalid action or missing parameters",
+                  "data": []
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access Denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": true,
+                  "msg": "Access Denied",
+                  "data": []
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Order": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "integer"
+          },
+          "order_status": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer"
+          },
+          "region": {
+            "type": "string"
+          },
+          "isp": {
+            "type": "string"
+          },
+          "service_id": {
+            "type": "integer"
+          }
+        },
+        "example": {
+          "order_id": 173461,
+          "order_status": "success",
+          "ip": "103.176.251.27",
+          "price": 160000,
+          "region": "Việt Nam - Hà Nội",
+          "service_id": 209911
+        }
+      },
+      "Vps": {
+        "type": "object",
+        "properties": {
+          "pk": {
+            "type": "integer"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expired_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "port": {
+            "type": "string"
+          },
+          "cpu": {
+            "type": "integer"
+          },
+          "ram": {
+            "type": "integer"
+          },
+          "disk": {
+            "type": "integer"
+          },
+          "price": {
+            "type": "integer"
+          },
+          "location": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "pk": 121502,
+          "ip": "123.123.123.123",
+          "user": "user",
+          "password": "password",
+          "created_at": "2022-08-30T08:53:00.427543Z",
+          "expired_at": "2023-12-28T08:53:00.426714Z",
+          "cpu": 1,
+          "ram": 1,
+          "disk": 12,
+          "price": 1,
+          "location": "Việt Nam - Viettel",
+          "status": "online"
+        }
+      },
+      "Proxy": {
+        "type": "object",
+        "properties": {
+          "pk": {
+            "type": "integer"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expired_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "price": {
+            "type": "integer"
+          },
+          "location": {
+            "type": "string"
+          },
+          "isp": {
+            "type": "string"
+          },
+          "https": {
+            "type": "string"
+          },
+          "socks": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "pk": 205809,
+          "ip": "123.123.123.123",
+          "user": "user",
+          "password": "password",
+          "created_at": "2023-11-18T11:59:01.228587Z",
+          "expired_at": "2023-12-18T11:59:01.227648Z",
+          "price": 50000,
+          "location": "Colorado",
+          "https": "14126",
+          "socks": "13073",
+          "status": "online"
+        }
+      },
+      "action_body": {
+        "required": [
+          "action",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Token": {
+        "type": "apiKey",
+        "description": "Enter your token in the format **Token &lt;token>**",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
+  }
+}

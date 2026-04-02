@@ -1,0 +1,543 @@
+<Window x:Class="RdpManager.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RDP Manager"
+        Width="1400"
+        Height="880"
+        MinWidth="1180"
+        MinHeight="760"
+        Background="#EAF0F7"
+        FontFamily="Segoe UI"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <SolidColorBrush x:Key="WindowBrush" Color="#EAF0F7" />
+        <SolidColorBrush x:Key="SidebarBrush" Color="#FBFBFD" />
+        <SolidColorBrush x:Key="CardBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#D9E1EC" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#F5F7FB" />
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#202733" />
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#69788E" />
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#8895A8" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#1F7BFF" />
+        <SolidColorBrush x:Key="AccentSoftBrush" Color="#E8F1FF" />
+        <SolidColorBrush x:Key="AccentSoftBorderBrush" Color="#BFD6FF" />
+        <SolidColorBrush x:Key="DangerSoftBrush" Color="#FFF1F1" />
+        <SolidColorBrush x:Key="DangerSoftBorderBrush" Color="#F5C7C7" />
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="20" />
+        </Style>
+
+        <Style x:Key="NavItemStyle" TargetType="Border">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+
+        <Style x:Key="NavButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ButtonBaseStyle" TargetType="Button">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+            <Setter Property="Background" Value="{StaticResource DangerSoftBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource DangerSoftBorderBrush}" />
+            <Setter Property="Foreground" Value="#B33838" />
+        </Style>
+
+        <Style x:Key="GridActionButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="MinWidth" Value="64" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentSoftBorderBrush}" />
+        </Style>
+
+        <Style x:Key="GridDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource GridActionButtonStyle}">
+            <Setter Property="Foreground" Value="#B33838" />
+            <Setter Property="Background" Value="{StaticResource DangerSoftBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource DangerSoftBorderBrush}" />
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="TextBoxBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="12,0,12,0"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="PasswordBox">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="12,0,12,0"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="GridLinesVisibility" Value="None" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="HorizontalGridLinesBrush" Value="Transparent" />
+            <Setter Property="VerticalGridLinesBrush" Value="Transparent" />
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F7F9FC" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="BorderBrush" Value="#E2E8F1" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridColumnHeader">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                    <Setter Property="Background" Value="Transparent" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="DataGridRow">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Height" Value="52" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F4F8FF" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#DCEAFE" />
+                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource WindowBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="292" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0"
+                Margin="14"
+                Background="{StaticResource SidebarBrush}"
+                BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="14">
+                <Grid Margin="18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <DockPanel LastChildFill="False">
+                    <TextBlock FontFamily="Segoe MDL2 Assets"
+                               FontSize="15"
+                               VerticalAlignment="Center"
+                               Text="&#xE72B;" />
+                    <TextBlock Margin="12,0,0,0"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Text="RDP Manager" />
+                </DockPanel>
+
+                    <TextBox x:Name="SearchTextBox"
+                          Grid.Row="1"
+                          Margin="0,18,0,0"
+                          TextChanged="SearchTextBox_OnTextChanged" />
+
+                <StackPanel Grid.Row="2" Margin="0,22,0,0">
+                    <Button x:Name="AllConnectionsNavButton"
+                            Style="{StaticResource NavButtonStyle}"
+                            Background="#F1F6FF"
+                            Click="AllConnectionsNavButton_OnClick">
+                        <DockPanel>
+                            <TextBlock x:Name="AllConnectionsNavIcon" FontFamily="Segoe MDL2 Assets" Text="&#xE80F;" />
+                            <TextBlock x:Name="AllConnectionsNavText" Margin="12,0,0,0" VerticalAlignment="Center" Text="All connections" />
+                        </DockPanel>
+                    </Button>
+                    <Button x:Name="FavoritesNavButton"
+                            Style="{StaticResource NavButtonStyle}"
+                            Click="FavoritesNavButton_OnClick">
+                        <DockPanel>
+                            <TextBlock x:Name="FavoritesNavIcon" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextSecondaryBrush}" Text="&#xE734;" />
+                            <TextBlock x:Name="FavoritesNavText" Margin="12,0,0,0" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Text="Favorites" />
+                        </DockPanel>
+                    </Button>
+                    <Button x:Name="RecentNavButton"
+                            Style="{StaticResource NavButtonStyle}"
+                            Click="RecentNavButton_OnClick">
+                        <DockPanel>
+                            <TextBlock x:Name="RecentNavIcon" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextSecondaryBrush}" Text="&#xE823;" />
+                            <TextBlock x:Name="RecentNavText" Margin="12,0,0,0" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Text="Recent" />
+                        </DockPanel>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Margin="0,24,0,0">
+                    <Button x:Name="ConnectButton"
+                            Margin="0,0,0,10"
+                            Click="ConnectButton_OnClick"
+                            Content="Connect selected"
+                            Style="{StaticResource PrimaryButtonStyle}" />
+                    <Button x:Name="AddButton"
+                            Margin="0,0,0,10"
+                            Click="AddButton_OnClick"
+                            Content="Add new entry"
+                            Style="{StaticResource ButtonBaseStyle}" />
+                    <Button x:Name="OpenCsvButton"
+                            Margin="0,0,0,10"
+                            Click="OpenCsvButton_OnClick"
+                            Content="Open CSV"
+                            Style="{StaticResource ButtonBaseStyle}" />
+                    <Button x:Name="SaveButton"
+                            Margin="0,0,0,10"
+                            Click="SaveButton_OnClick"
+                            Content="Save"
+                            Style="{StaticResource ButtonBaseStyle}" />
+                    <Button x:Name="SaveAsButton"
+                            Margin="0,0,0,10"
+                            Click="SaveAsButton_OnClick"
+                            Content="Save As"
+                            Style="{StaticResource ButtonBaseStyle}" />
+                    <Button x:Name="DeleteButton"
+                            Click="DeleteButton_OnClick"
+                            Content="Delete selected"
+                            Style="{StaticResource DangerButtonStyle}" />
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Column="1"
+                      Margin="0,14,14,14"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="264" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Margin="0,0,16,0" Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <StackPanel Margin="0,0,0,16">
+                                <TextBlock FontSize="24" FontWeight="Bold" Text="Saved connections" />
+                                <TextBlock Margin="0,6,0,0" Foreground="{StaticResource TextSecondaryBrush}" Text="Double-click a row to launch Remote Desktop immediately." />
+                            </StackPanel>
+                            <Grid Grid.Row="1">
+                                <DataGrid x:Name="EntriesGrid"
+                                           AutoGenerateColumns="False"
+                                           CanUserAddRows="False"
+                                           IsReadOnly="True"
+                                           SelectionMode="Single"
+                                           SelectionUnit="FullRow"
+                                           MouseDoubleClick="EntriesGrid_OnMouseDoubleClick"
+                                           SelectionChanged="EntriesGrid_OnSelectionChanged">
+                                    <DataGrid.Resources>
+                                        <Style x:Key="CellTextStyle" TargetType="TextBlock">
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                            <Setter Property="HorizontalAlignment" Value="Left" />
+                                            <Setter Property="TextAlignment" Value="Left" />
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Width="1.1*" Binding="{Binding HostName}" ElementStyle="{StaticResource CellTextStyle}" Header="HostName" />
+                                        <DataGridTextColumn Width="1.3*" Binding="{Binding Host}" ElementStyle="{StaticResource CellTextStyle}" Header="Host" />
+                                        <DataGridTextColumn Width="0.7*" Binding="{Binding Port}" ElementStyle="{StaticResource CellTextStyle}" Header="Port" />
+                                        <DataGridTextColumn Width="0.9*" Binding="{Binding User}" ElementStyle="{StaticResource CellTextStyle}" Header="User" />
+                                        <DataGridTextColumn Width="0.8*" Binding="{Binding MaskedPassword}" ElementStyle="{StaticResource CellTextStyle}" Header="Password" />
+                                        <DataGridTemplateColumn Width="270" Header="Action">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid VerticalAlignment="Center" HorizontalAlignment="Left">
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                                            <Button Content="Connect"
+                                                                    Style="{StaticResource GridActionButtonStyle}"
+                                                                    Tag="{Binding}"
+                                                                    Click="RowConnectButton_OnClick" />
+                                                            <Button Content="Edit"
+                                                                    Style="{StaticResource GridActionButtonStyle}"
+                                                                    Tag="{Binding}"
+                                                                    Click="RowEditButton_OnClick" />
+                                                            <Button Content="Delete"
+                                                                    Margin="0"
+                                                                    Style="{StaticResource GridDangerButtonStyle}"
+                                                                    Tag="{Binding}"
+                                                                    Click="RowDeleteButton_OnClick" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock x:Name="EmptyStateTextBlock"
+                                           Margin="0,72,0,0"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Top"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="14"
+                                           Text="No connections to show."
+                                           Visibility="Collapsed" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock FontSize="24" FontWeight="Bold" Text="Entry editor" />
+                                <Button x:Name="FavoriteButton"
+                                        Grid.Column="1"
+                                        Width="40"
+                                        Height="40"
+                                        Margin="12,0,0,0"
+                                        Click="FavoriteButton_OnClick"
+                                        FontFamily="Segoe MDL2 Assets"
+                                        FontSize="16"
+                                        Padding="0"
+                                        HorizontalContentAlignment="Center"
+                                        Content="&#xE734;"
+                                        Style="{StaticResource ButtonBaseStyle}" />
+                            </Grid>
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,6,0,18"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="HostName is your display label. Host should be the real IP or DNS target." 
+                                       TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="2" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="HOSTNAME" />
+                            <TextBox x:Name="HostNameTextBox"
+                                     Grid.Row="3"
+                                     Margin="0,8,0,14"
+                                     TextChanged="Editor_OnTextChanged" />
+
+                            <Grid Grid.Row="4" Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="110" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="HOST" />
+                                    <TextBox x:Name="HostTextBox"
+                                             Margin="0,8,0,0"
+                                             TextChanged="Editor_OnTextChanged" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PORT" />
+                                    <TextBox x:Name="PortTextBox"
+                                             Margin="0,8,0,0"
+                                             Text="3389"
+                                             TextChanged="Editor_OnTextChanged" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Grid.Row="5" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="USER" />
+                            <TextBox x:Name="UserTextBox"
+                                     Grid.Row="6"
+                                     Margin="0,8,0,14"
+                                     TextChanged="Editor_OnTextChanged" />
+
+                            <StackPanel Grid.Row="7">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PASSWORD" />
+                                <PasswordBox x:Name="PasswordBox"
+                                             Margin="0,8,0,0"
+                                             PasswordChanged="PasswordBox_OnPasswordChanged" />
+                            </StackPanel>
+
+                            <Grid Grid.Row="8" Margin="0,22,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="ApplyButton"
+                                        Grid.Column="0"
+                                        Margin="0,0,8,0"
+                                        Click="ApplyButton_OnClick"
+                                        Content="Apply entry"
+                                        Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button x:Name="ClearButton"
+                                        Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        Click="ClearButton_OnClick"
+                                        Content="Clear form"
+                                        Style="{StaticResource ButtonBaseStyle}" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Window>
