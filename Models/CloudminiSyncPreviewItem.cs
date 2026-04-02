@@ -92,7 +92,7 @@ namespace RdpManager.Models
 
         public string Platform
         {
-            get { return ConnectionClassifier.GetPlatformLabel(Port); }
+            get { return ConnectionClassifier.GetPlatformLabel(Port, User); }
         }
 
         public string Location

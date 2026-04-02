@@ -11,7 +11,7 @@ namespace RdpManager.Services
             return (remoteItems ?? Enumerable.Empty<CloudminiVps>())
                 .Where(remote =>
                     remote != null &&
-                    ConnectionClassifier.MatchesPlatform(remote.Port, platformFilter) &&
+                    ConnectionClassifier.MatchesPlatform(remote.Port, remote.User, platformFilter) &&
                     ConnectionClassifier.MatchesRemoteStatus(remote, statusFilter))
                 .ToList();
         }

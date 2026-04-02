@@ -175,12 +175,20 @@
         </Style>
 
         <Style x:Key="FilterChipButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
-            <Setter Property="Height" Value="34" />
-            <Setter Property="MinWidth" Value="78" />
-            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinWidth" Value="50" />
+            <Setter Property="Padding" Value="10,0" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style x:Key="FilterGroupLabelStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,7,10,0" />
             <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
 
         <Style TargetType="DataGrid">
@@ -414,19 +422,17 @@
                                            Margin="0,6,0,0"
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            Text="Click Host, User, or Password to copy. Use Connect to launch RDP." />
-                                <StackPanel Margin="0,14,0,0">
-                                    <TextBlock FontSize="12"
-                                               FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               Text="PLATFORM" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <WrapPanel Margin="0,14,0,0">
+                                    <TextBlock Style="{StaticResource FilterGroupLabelStyle}"
+                                               Text="Platform" />
+                                    <StackPanel Orientation="Horizontal">
                                         <Button x:Name="ConnectionsAllPlatformFilterButton"
                                                 Click="ConnectionsAllPlatformFilterButton_OnClick"
                                                 Content="All"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="ConnectionsWindowsPlatformFilterButton"
                                                 Click="ConnectionsWindowsPlatformFilterButton_OnClick"
-                                                Content="Windows"
+                                                Content="Win"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="ConnectionsLinuxPlatformFilterButton"
                                                 Margin="0"
@@ -434,23 +440,21 @@
                                                 Content="Linux"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                     </StackPanel>
-                                    <TextBlock Margin="0,12,0,0"
-                                               FontSize="12"
-                                               FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               Text="STATUS" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Style="{StaticResource FilterGroupLabelStyle}"
+                                               Margin="12,7,10,0"
+                                               Text="Status" />
+                                    <StackPanel Orientation="Horizontal">
                                         <Button x:Name="ConnectionsAllStatusFilterButton"
                                                 Click="ConnectionsAllStatusFilterButton_OnClick"
                                                 Content="All"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="ConnectionsOnlineStatusFilterButton"
                                                 Click="ConnectionsOnlineStatusFilterButton_OnClick"
-                                                Content="Online"
+                                                Content="On"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="ConnectionsOfflineStatusFilterButton"
                                                 Click="ConnectionsOfflineStatusFilterButton_OnClick"
-                                                Content="Offline"
+                                                Content="Off"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="ConnectionsOtherStatusFilterButton"
                                                 Margin="0"
@@ -458,7 +462,7 @@
                                                 Content="Other"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                     </StackPanel>
-                                </StackPanel>
+                                </WrapPanel>
                             </StackPanel>
                             <Grid Grid.Row="1">
                                 <DataGrid x:Name="EntriesGrid"
@@ -773,50 +777,43 @@
                                               Checked="CloudminiOptionCheckBox_OnChanged"
                                               Unchecked="CloudminiOptionCheckBox_OnChanged"
                                               Content="Import only online VPS" />
-                                    <TextBlock Margin="0,14,0,0"
-                                               FontSize="12"
-                                               FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               Text="PLATFORM FILTER" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <WrapPanel Margin="0,14,0,0">
+                                        <TextBlock Style="{StaticResource FilterGroupLabelStyle}"
+                                                   Text="Platform" />
                                         <Button x:Name="CloudminiAllPlatformFilterButton"
                                                 Click="CloudminiAllPlatformFilterButton_OnClick"
                                                 Content="All"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="CloudminiWindowsPlatformFilterButton"
                                                 Click="CloudminiWindowsPlatformFilterButton_OnClick"
-                                                Content="Windows"
+                                                Content="Win"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="CloudminiLinuxPlatformFilterButton"
                                                 Margin="0"
                                                 Click="CloudminiLinuxPlatformFilterButton_OnClick"
                                                 Content="Linux"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
-                                    </StackPanel>
-                                    <TextBlock Margin="0,12,0,0"
-                                               FontSize="12"
-                                               FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               Text="STATUS FILTER" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <TextBlock Style="{StaticResource FilterGroupLabelStyle}"
+                                                   Margin="12,7,10,0"
+                                                   Text="Status" />
                                         <Button x:Name="CloudminiAllStatusFilterButton"
                                                 Click="CloudminiAllStatusFilterButton_OnClick"
                                                 Content="All"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="CloudminiOnlineStatusFilterButton"
                                                 Click="CloudminiOnlineStatusFilterButton_OnClick"
-                                                Content="Online"
+                                                Content="On"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="CloudminiOfflineStatusFilterButton"
                                                 Click="CloudminiOfflineStatusFilterButton_OnClick"
-                                                Content="Offline"
+                                                Content="Off"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                         <Button x:Name="CloudminiOtherStatusFilterButton"
                                                 Margin="0"
                                                 Click="CloudminiOtherStatusFilterButton_OnClick"
                                                 Content="Other"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
-                                    </StackPanel>
+                                    </WrapPanel>
                                 </StackPanel>
                             </Border>
                         </Grid>
