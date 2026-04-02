@@ -13,10 +13,11 @@ namespace RdpManager.Services
             NavigationFilter navigationFilter,
             PlatformFilter platformFilter,
             StatusFilter statusFilter,
+            string groupFilter,
             int requestedPage,
             int pageSize)
         {
-            var filteredEntries = BuildFilteredEntries(entries, query, navigationFilter, platformFilter, statusFilter).ToList();
+            var filteredEntries = BuildFilteredEntries(entries, query, navigationFilter, platformFilter, statusFilter, groupFilter).ToList();
             var totalPages = Math.Max(1, (int)Math.Ceiling(filteredEntries.Count / (double)pageSize));
             var currentPage = Math.Max(1, Math.Min(requestedPage, totalPages));
 
@@ -37,15 +38,18 @@ namespace RdpManager.Services
             string query,
             NavigationFilter navigationFilter,
             PlatformFilter platformFilter,
-            StatusFilter statusFilter)
+            StatusFilter statusFilter,
+            string groupFilter)
         {
             var normalizedQuery = (query ?? string.Empty).Trim();
+            var normalizedGroup = (groupFilter ?? string.Empty).Trim();
             var filteredEntries = (entries ?? Enumerable.Empty<RdpEntry>())
                 .Where(entry =>
                     entry != null &&
                     MatchesNavigationFilter(entry, navigationFilter) &&
                     ConnectionClassifier.MatchesPlatform(entry.Port, entry.User, platformFilter) &&
                     ConnectionClassifier.MatchesLocalStatus(entry, statusFilter) &&
+                    MatchesGroup(entry, normalizedGroup) &&
                     MatchesQuery(entry, normalizedQuery));
 
             if (navigationFilter == NavigationFilter.Recent)
@@ -56,9 +60,9 @@ namespace RdpManager.Services
             return filteredEntries.ToList();
         }
 
-        public static string GetEmptyStateMessage(NavigationFilter navigationFilter, PlatformFilter platformFilter, StatusFilter statusFilter)
+        public static string GetEmptyStateMessage(NavigationFilter navigationFilter, PlatformFilter platformFilter, StatusFilter statusFilter, string groupFilter)
         {
-            var qualifier = BuildQualifier(platformFilter, statusFilter, true);
+            var qualifier = BuildQualifier(platformFilter, statusFilter, groupFilter, true);
             switch (navigationFilter)
             {
                 case NavigationFilter.Favorites:
@@ -89,6 +93,12 @@ namespace RdpManager.Services
             }
         }
 
+        private static bool MatchesGroup(RdpEntry entry, string groupFilter)
+        {
+            return string.IsNullOrWhiteSpace(groupFilter) ||
+                   string.Equals((entry.GroupName ?? string.Empty).Trim(), groupFilter, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool MatchesQuery(RdpEntry entry, string query)
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -98,7 +108,10 @@ namespace RdpManager.Services
 
             return ContainsIgnoreCase(entry.HostName, query) ||
                    ContainsIgnoreCase(entry.Host, query) ||
-                   ContainsIgnoreCase(entry.User, query);
+                   ContainsIgnoreCase(entry.User, query) ||
+                   ContainsIgnoreCase(entry.GroupName, query) ||
+                   ContainsIgnoreCase(entry.Tags, query) ||
+                   ContainsIgnoreCase(entry.Notes, query);
         }
 
         private static bool ContainsIgnoreCase(string value, string query)
@@ -107,7 +120,7 @@ namespace RdpManager.Services
                    value.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        private static string BuildQualifier(PlatformFilter platformFilter, StatusFilter statusFilter, bool localContext)
+        private static string BuildQualifier(PlatformFilter platformFilter, StatusFilter statusFilter, string groupFilter, bool localContext)
         {
             var parts = new List<string>();
             if (statusFilter != StatusFilter.All)
@@ -118,6 +131,11 @@ namespace RdpManager.Services
             if (platformFilter != PlatformFilter.All)
             {
                 parts.Add(ConnectionClassifier.GetPlatformFilterLabel(platformFilter).ToLowerInvariant());
+            }
+
+            if (!string.IsNullOrWhiteSpace(groupFilter))
+            {
+                parts.Add(string.Format("group \"{0}\"", groupFilter));
             }
 
             return parts.Count == 0 ? string.Empty : string.Join(" ", parts) + " ";

@@ -15,10 +15,13 @@ Dung 3 lop test:
 - Xoa entry
 - Search theo HostName
 - Search theo Host
+- Search theo Group / Tags / Notes
 - Favorite / unfavorite
 - Recent update sau connect
 - Save CSV
 - Open CSV khac
+- Health check selected
+- Health check current page
 
 ## Phase 2 manual checklist
 
@@ -44,6 +47,8 @@ Dung 3 lop test:
 - Click `Host`, `User`, `Password` copy dung gia tri
 - Double-click row khong duoc auto connect
 - Settings co the quay lai `All connections`
+- `Group` filter local list phai hoat dong dung
+- `Notes`, `Group`, `Tags`, `Health` van con sau khi dong/mo lai app
 
 ## Release checklist
 

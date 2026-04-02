@@ -19,8 +19,13 @@ namespace RdpManager.Services
                 EntryMetadata metadata;
                 if (!map.TryGetValue(GetKey(entry), out metadata))
                 {
+                    entry.GroupName = null;
+                    entry.Tags = null;
+                    entry.Notes = null;
                     entry.IsFavorite = false;
                     entry.LastConnectedUtc = null;
+                    entry.HealthStatus = null;
+                    entry.LastHealthCheckedUtc = null;
                     entry.SourceProvider = null;
                     entry.SourceId = null;
                     entry.SourceStatus = null;
@@ -32,8 +37,13 @@ namespace RdpManager.Services
                     continue;
                 }
 
+                entry.GroupName = metadata.GroupName;
+                entry.Tags = metadata.Tags;
+                entry.Notes = metadata.Notes;
                 entry.IsFavorite = metadata.IsFavorite;
                 entry.LastConnectedUtc = metadata.GetLastConnectedUtc();
+                entry.HealthStatus = metadata.HealthStatus;
+                entry.LastHealthCheckedUtc = metadata.GetLastHealthCheckedUtc();
                 entry.SourceProvider = metadata.SourceProvider;
                 entry.SourceId = metadata.SourceId;
                 entry.SourceStatus = metadata.SourceStatus;
@@ -52,8 +62,13 @@ namespace RdpManager.Services
             {
                 Entries = entries
                     .Where(entry =>
+                        !string.IsNullOrWhiteSpace(entry.GroupName) ||
+                        !string.IsNullOrWhiteSpace(entry.Tags) ||
+                        !string.IsNullOrWhiteSpace(entry.Notes) ||
                         entry.IsFavorite ||
                         entry.LastConnectedUtc.HasValue ||
+                        !string.IsNullOrWhiteSpace(entry.HealthStatus) ||
+                        entry.LastHealthCheckedUtc.HasValue ||
                         entry.IsProviderManaged ||
                         !string.IsNullOrWhiteSpace(entry.SourceProvider) ||
                         !string.IsNullOrWhiteSpace(entry.SourceId) ||
@@ -61,9 +76,16 @@ namespace RdpManager.Services
                     .Select(entry => new EntryMetadata
                     {
                         Key = GetKey(entry),
+                        GroupName = entry.GroupName,
+                        Tags = entry.Tags,
+                        Notes = entry.Notes,
                         IsFavorite = entry.IsFavorite,
                         LastConnectedUtc = entry.LastConnectedUtc.HasValue
                             ? entry.LastConnectedUtc.Value.ToString("o")
+                            : null,
+                        HealthStatus = entry.HealthStatus,
+                        LastHealthCheckedUtc = entry.LastHealthCheckedUtc.HasValue
+                            ? entry.LastHealthCheckedUtc.Value.ToString("o")
                             : null,
                         SourceProvider = entry.SourceProvider,
                         SourceId = entry.SourceId,
@@ -149,9 +171,19 @@ namespace RdpManager.Services
     {
         public string Key { get; set; }
 
+        public string GroupName { get; set; }
+
+        public string Tags { get; set; }
+
+        public string Notes { get; set; }
+
         public bool IsFavorite { get; set; }
 
         public string LastConnectedUtc { get; set; }
+
+        public string HealthStatus { get; set; }
+
+        public string LastHealthCheckedUtc { get; set; }
 
         public string SourceProvider { get; set; }
 
@@ -183,6 +215,11 @@ namespace RdpManager.Services
         public DateTime? GetSourceCreatedAtUtc()
         {
             return ParseDate(SourceCreatedAtUtc);
+        }
+
+        public DateTime? GetLastHealthCheckedUtc()
+        {
+            return ParseDate(LastHealthCheckedUtc);
         }
 
         public DateTime? GetSourceExpiredAtUtc()

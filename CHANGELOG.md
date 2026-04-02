@@ -4,13 +4,24 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 
 ## [Unreleased]
 
+## [1.2.0-phase2-local-ops] - 2026-04-02
+
+### Added
+
+- Them `Notes`, `Group`, va `Tags` local cho moi `RdpEntry`, duoc luu trong `meta.xml`.
+- Them `Group` filter tren local list.
+- Them `Health` state cho local connections, kem `Check selected` va `Check page`.
+- Them lookup health metadata: `HealthStatus`, `LastHealthCheckedUtc`.
+
 ### Changed
 
 - Card `Saved connections` va `Entry editor` duoc giu trong cung viewport o do phan giai hien tai, khong con phu thuoc vao scroll toan trang.
 - Them phan trang cho danh sach local, mac dinh `10 items/page`.
 - Cot `Host`, `User`, `Password` trong local list co the click de copy vao clipboard.
+- Search local list gio match ca `Group`, `Tags`, va `Notes`.
 - Bo hanh vi double-click mo RDP; tu nay chi nut `Connect` moi duoc phep launch session.
 - Tinh chinh do rong cot `Action` va nut trong bang de khong bi cat o man hinh hien tai.
+- Heuristic phan loai `Linux` duoc doi thanh: `user = root`, neu khong thi moi fallback `port = 22`.
 
 ## [1.1.0-phase2-mvp] - 2026-04-02
 

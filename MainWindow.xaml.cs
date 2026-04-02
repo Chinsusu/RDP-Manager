@@ -25,15 +25,19 @@ namespace RdpManager
         private const int DwmCaptionColor = 35;
         private const int DwmTextColor = 36;
         private const int EntriesPageSize = 10;
+        private const int HealthCheckTimeoutMilliseconds = 1500;
+        private const string AllGroupsFilterOption = "All groups";
 
         private ObservableCollection<RdpEntry> _entries = new ObservableCollection<RdpEntry>();
         private readonly ObservableCollection<RdpEntry> _pagedEntries = new ObservableCollection<RdpEntry>();
+        private readonly ObservableCollection<string> _connectionGroupOptions = new ObservableCollection<string>();
         private string _currentFilePath;
         private bool _isDirty;
         private bool _isCreatingNew = true;
         private bool _editorDirty;
         private bool _isPopulatingForm;
         private bool _isRebuildingEntriesPage;
+        private bool _isUpdatingGroupFilter;
         private int _currentEntriesPage = 1;
         private int _filteredEntriesCount;
         private readonly ObservableCollection<CloudminiSyncPreviewItem> _cloudminiPreviewItems = new ObservableCollection<CloudminiSyncPreviewItem>();
@@ -41,6 +45,7 @@ namespace RdpManager
         private NavigationFilter _currentNavigationFilter = NavigationFilter.AllConnections;
         private PlatformFilter _currentConnectionsPlatformFilter = PlatformFilter.All;
         private StatusFilter _currentConnectionsStatusFilter = StatusFilter.All;
+        private string _currentConnectionsGroupFilter = string.Empty;
         private PlatformFilter _currentCloudminiPlatformFilter = PlatformFilter.All;
         private StatusFilter _currentCloudminiStatusFilter = StatusFilter.All;
         private AppSection _currentAppSection = AppSection.Connections;
@@ -57,6 +62,7 @@ namespace RdpManager
 
             EntriesGrid.ItemsSource = _pagedEntries;
             CloudminiPreviewGrid.ItemsSource = _cloudminiPreviewItems;
+            ConnectionsGroupFilterComboBox.ItemsSource = _connectionGroupOptions;
             _currentFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "clients.csv");
             _settings = SettingsStorage.Load();
 
@@ -318,6 +324,21 @@ namespace RdpManager
             RefreshEntriesView();
         }
 
+        private void ConnectionsGroupFilterComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isUpdatingGroupFilter)
+            {
+                return;
+            }
+
+            var selected = ConnectionsGroupFilterComboBox.SelectedItem as string;
+            _currentConnectionsGroupFilter = string.IsNullOrWhiteSpace(selected) || string.Equals(selected, AllGroupsFilterOption, StringComparison.Ordinal)
+                ? string.Empty
+                : selected;
+            _currentEntriesPage = 1;
+            RefreshEntriesView();
+        }
+
         private void CloudminiAllPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
         {
             _currentCloudminiPlatformFilter = PlatformFilter.All;
@@ -451,6 +472,18 @@ namespace RdpManager
             DeleteEntry(entry);
         }
 
+        private void CheckSelectedButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var selected = EntriesGrid.SelectedItem as RdpEntry ?? _editingEntry;
+            if (selected == null)
+            {
+                MessageBox.Show(this, "Select an entry to check first.", "Health Check", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            RunHealthCheck(new[] { selected }, "selected connection");
+        }
+
         private void EntriesGrid_OnSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (_isRebuildingEntriesPage)
@@ -495,6 +528,17 @@ namespace RdpManager
             _currentEntriesPage++;
             RebuildEntriesPage();
             UpdateSummary();
+        }
+
+        private void CheckPageButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_pagedEntries.Count == 0)
+            {
+                MessageBox.Show(this, "There are no visible connections to check on this page.", "Health Check", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            RunHealthCheck(_pagedEntries.ToList(), "current page");
         }
 
         protected override void OnClosing(CancelEventArgs e)
@@ -572,6 +616,9 @@ namespace RdpManager
             var port = NormalizePort(PortTextBox.Text);
             var user = (UserTextBox.Text ?? string.Empty).Trim();
             var password = PasswordBox.Password ?? string.Empty;
+            var groupName = (GroupTextBox.Text ?? string.Empty).Trim();
+            var tags = (TagsTextBox.Text ?? string.Empty).Trim();
+            var notes = (NotesTextBox.Text ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(host))
             {
@@ -593,6 +640,9 @@ namespace RdpManager
             entry.Port = port;
             entry.User = user;
             entry.Password = password;
+            entry.GroupName = groupName;
+            entry.Tags = tags;
+            entry.Notes = notes;
 
             _isCreatingNew = false;
             _editorDirty = false;
@@ -611,6 +661,9 @@ namespace RdpManager
             PortTextBox.Text = string.IsNullOrWhiteSpace(entry.Port) ? "3389" : entry.Port;
             UserTextBox.Text = entry.User;
             PasswordBox.Password = entry.Password ?? string.Empty;
+            GroupTextBox.Text = entry.GroupName ?? string.Empty;
+            TagsTextBox.Text = entry.Tags ?? string.Empty;
+            NotesTextBox.Text = entry.Notes ?? string.Empty;
             _isPopulatingForm = false;
             _editorDirty = false;
         }
@@ -626,6 +679,9 @@ namespace RdpManager
             PortTextBox.Text = "3389";
             UserTextBox.Text = string.Empty;
             PasswordBox.Password = string.Empty;
+            GroupTextBox.Text = string.Empty;
+            TagsTextBox.Text = string.Empty;
+            NotesTextBox.Text = string.Empty;
             _isPopulatingForm = false;
             _editorDirty = false;
             HostTextBox.Focus();
@@ -708,7 +764,10 @@ namespace RdpManager
                 !string.Equals(_editingEntry.Host ?? string.Empty, HostTextBox.Text ?? string.Empty, StringComparison.Ordinal) ||
                 !string.Equals(NormalizePort(_editingEntry.Port), NormalizePort(PortTextBox.Text), StringComparison.Ordinal) ||
                 !string.Equals(_editingEntry.User ?? string.Empty, UserTextBox.Text ?? string.Empty, StringComparison.Ordinal) ||
-                !string.Equals(_editingEntry.Password ?? string.Empty, PasswordBox.Password ?? string.Empty, StringComparison.Ordinal);
+                !string.Equals(_editingEntry.Password ?? string.Empty, PasswordBox.Password ?? string.Empty, StringComparison.Ordinal) ||
+                !string.Equals(_editingEntry.GroupName ?? string.Empty, GroupTextBox.Text ?? string.Empty, StringComparison.Ordinal) ||
+                !string.Equals(_editingEntry.Tags ?? string.Empty, TagsTextBox.Text ?? string.Empty, StringComparison.Ordinal) ||
+                !string.Equals(_editingEntry.Notes ?? string.Empty, NotesTextBox.Text ?? string.Empty, StringComparison.Ordinal);
 
             return editorChanged;
         }
@@ -780,6 +839,9 @@ namespace RdpManager
                 !string.IsNullOrWhiteSpace(HostTextBox.Text) ||
                 !string.IsNullOrWhiteSpace(UserTextBox.Text) ||
                 !string.IsNullOrWhiteSpace(PasswordBox.Password) ||
+                !string.IsNullOrWhiteSpace(GroupTextBox.Text) ||
+                !string.IsNullOrWhiteSpace(TagsTextBox.Text) ||
+                !string.IsNullOrWhiteSpace(NotesTextBox.Text) ||
                 !string.Equals(NormalizePort(PortTextBox.Text), "3389", StringComparison.Ordinal);
         }
 
@@ -818,6 +880,7 @@ namespace RdpManager
 
         private void RefreshEntriesView()
         {
+            UpdateConnectionsGroupOptions();
             RebuildEntriesPage();
             UpdateSummary();
         }
@@ -1001,7 +1064,8 @@ namespace RdpManager
             EmptyStateTextBlock.Text = ConnectionListService.GetEmptyStateMessage(
                 _currentNavigationFilter,
                 _currentConnectionsPlatformFilter,
-                _currentConnectionsStatusFilter);
+                _currentConnectionsStatusFilter,
+                _currentConnectionsGroupFilter);
             EmptyStateTextBlock.Visibility = Visibility.Visible;
         }
 
@@ -1127,6 +1191,88 @@ namespace RdpManager
                 : (Brush)(FindResource("TextPrimaryBrush") as Brush ?? Brushes.Black);
         }
 
+        private void UpdateConnectionsGroupOptions()
+        {
+            if (ConnectionsGroupFilterComboBox == null)
+            {
+                return;
+            }
+
+            var groups = _entries
+                .Select(entry => entry == null ? string.Empty : (entry.GroupName ?? string.Empty).Trim())
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            _isUpdatingGroupFilter = true;
+            try
+            {
+                _connectionGroupOptions.Clear();
+                _connectionGroupOptions.Add(AllGroupsFilterOption);
+                foreach (var group in groups)
+                {
+                    _connectionGroupOptions.Add(group);
+                }
+
+                if (!string.IsNullOrWhiteSpace(_currentConnectionsGroupFilter) &&
+                    !groups.Any(group => string.Equals(group, _currentConnectionsGroupFilter, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _currentConnectionsGroupFilter = string.Empty;
+                }
+
+                ConnectionsGroupFilterComboBox.SelectedItem = string.IsNullOrWhiteSpace(_currentConnectionsGroupFilter)
+                    ? AllGroupsFilterOption
+                    : _connectionGroupOptions.FirstOrDefault(option =>
+                        string.Equals(option, _currentConnectionsGroupFilter, StringComparison.OrdinalIgnoreCase)) ?? AllGroupsFilterOption;
+            }
+            finally
+            {
+                _isUpdatingGroupFilter = false;
+            }
+        }
+
+        private void RunHealthCheck(IList<RdpEntry> entries, string scopeLabel)
+        {
+            var targets = (entries ?? new List<RdpEntry>())
+                .Where(entry => entry != null)
+                .ToList();
+            if (targets.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                var statusSummary = new List<string>();
+                foreach (var entry in targets)
+                {
+                    statusSummary.Add(ConnectionHealthService.CheckAndApply(entry, HealthCheckTimeoutMilliseconds));
+                }
+
+                MetadataStorage.Save(_currentFilePath, _entries);
+                RefreshEntriesView();
+
+                var summary = ConnectionHealthService.SummarizeStatuses(statusSummary);
+                var summaryText = summary.Count == 0
+                    ? "No results."
+                    : string.Join(", ", summary.Select(item => string.Format("{0}: {1}", item.Key, item.Value)));
+
+                MessageBox.Show(
+                    this,
+                    string.Format("Health check completed for {0}.\n{1}", scopeLabel, summaryText),
+                    "Health Check",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
         private void RebuildEntriesPage()
         {
             var pageResult = ConnectionListService.BuildPage(
@@ -1135,6 +1281,7 @@ namespace RdpManager
                 _currentNavigationFilter,
                 _currentConnectionsPlatformFilter,
                 _currentConnectionsStatusFilter,
+                _currentConnectionsGroupFilter,
                 _currentEntriesPage,
                 EntriesPageSize);
 
@@ -1211,7 +1358,8 @@ namespace RdpManager
                 SearchTextBox == null ? string.Empty : SearchTextBox.Text,
                 _currentNavigationFilter,
                 _currentConnectionsPlatformFilter,
-                _currentConnectionsStatusFilter);
+                _currentConnectionsStatusFilter,
+                _currentConnectionsGroupFilter);
             var index = filteredEntries.IndexOf(entry);
             if (index < 0)
             {

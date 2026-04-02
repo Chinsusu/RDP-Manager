@@ -10,8 +10,13 @@ namespace RdpManager.Models
         private string _port = "3389";
         private string _user;
         private string _password;
+        private string _groupName;
+        private string _tags;
+        private string _notes;
         private bool _isFavorite;
         private System.DateTime? _lastConnectedUtc;
+        private string _healthStatus;
+        private System.DateTime? _lastHealthCheckedUtc;
         private string _sourceProvider;
         private string _sourceId;
         private string _sourceStatus;
@@ -106,6 +111,51 @@ namespace RdpManager.Models
             get { return string.IsNullOrEmpty(Password) ? string.Empty : "********"; }
         }
 
+        public string GroupName
+        {
+            get { return _groupName; }
+            set
+            {
+                if (_groupName == value)
+                {
+                    return;
+                }
+
+                _groupName = value;
+                OnPropertyChanged("GroupName");
+            }
+        }
+
+        public string Tags
+        {
+            get { return _tags; }
+            set
+            {
+                if (_tags == value)
+                {
+                    return;
+                }
+
+                _tags = value;
+                OnPropertyChanged("Tags");
+            }
+        }
+
+        public string Notes
+        {
+            get { return _notes; }
+            set
+            {
+                if (_notes == value)
+                {
+                    return;
+                }
+
+                _notes = value;
+                OnPropertyChanged("Notes");
+            }
+        }
+
         public string PlatformLabel
         {
             get { return ConnectionClassifier.GetPlatformLabel(Port, User); }
@@ -138,6 +188,39 @@ namespace RdpManager.Models
 
                 _lastConnectedUtc = value;
                 OnPropertyChanged("LastConnectedUtc");
+            }
+        }
+
+        public string HealthStatus
+        {
+            get { return _healthStatus; }
+            set
+            {
+                if (_healthStatus == value)
+                {
+                    return;
+                }
+
+                _healthStatus = value;
+                OnPropertyChanged("HealthStatus");
+                OnPropertyChanged("HealthLabel");
+                OnPropertyChanged("HealthDetails");
+            }
+        }
+
+        public System.DateTime? LastHealthCheckedUtc
+        {
+            get { return _lastHealthCheckedUtc; }
+            set
+            {
+                if (_lastHealthCheckedUtc == value)
+                {
+                    return;
+                }
+
+                _lastHealthCheckedUtc = value;
+                OnPropertyChanged("LastHealthCheckedUtc");
+                OnPropertyChanged("HealthDetails");
             }
         }
 
@@ -266,6 +349,16 @@ namespace RdpManager.Models
         public string StatusLabel
         {
             get { return ConnectionClassifier.GetLocalStatusLabel(this); }
+        }
+
+        public string HealthLabel
+        {
+            get { return ConnectionHealthService.GetDisplayLabel(HealthStatus); }
+        }
+
+        public string HealthDetails
+        {
+            get { return ConnectionHealthService.GetDetails(HealthStatus, LastHealthCheckedUtc); }
         }
 
         private void OnPropertyChanged(string propertyName)

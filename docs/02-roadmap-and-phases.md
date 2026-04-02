@@ -61,10 +61,12 @@ Current implemented scope:
 - Fetch VPS qua `GET /vps`
 - Preview sync va merge vao local RDP list
 - Luu token theo user machine neu bat remember
-- Filter VPS Linux/Windows theo heuristic `port = 22`
+- Filter VPS Linux/Windows theo heuristic `user = root`, fallback `port = 22`
 - Filter local list Linux/Windows bang cung heuristic
 - Copy nhanh `Host`, `User`, `Password` tu local list
 - Pagination local list `10 items/page`
+- Local metadata fields: `Notes`, `Group`, `Tags`
+- Local health check cho selected entry va current page
 
 Acceptance criteria:
 
@@ -74,6 +76,8 @@ Acceptance criteria:
 - App hien ro item moi, item duoc update, item bo qua
 - User co the dieu huong UI ma khong bi ket o Settings
 - Local list khong tu mo RDP khi double-click row
+- Local metadata khong can chen vao CSV van phai tim kiem va su dung duoc
+- Health check khong duoc pha vo local CRUD flow
 
 ## Phase 3: Cloudmini actions
 

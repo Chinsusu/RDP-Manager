@@ -83,6 +83,8 @@ De de them bot sua tab:
 - Sidebar chi chua navigation va quick actions
 - List tab phai co search box
 - List tab nen co filter chip ro rang thay vi dropdown khi chi co it lua chon
+- Neu can filter theo taxonomy rong hon, uu tien 1 filter inline nho gon (vi du `Group`) thay vi them mot pane rieng
 - List tab co nhieu item phai uu tien pagination hon la keo dai card
 - Button destructive phai co style do nhat quan
 - Nguon du lieu external phai co nhan provider/source
+- Local-only metadata (`Notes`, `Group`, `Tags`, `Health`) phai song ngoai CSV de khong lam vo import/export flow
