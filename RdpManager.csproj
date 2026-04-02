@@ -101,6 +101,7 @@
     <Compile Include="Services\CloudminiFilterService.cs" />
     <Compile Include="Services\CloudminiSyncService.cs" />
     <Compile Include="Services\ConnectionClassifier.cs" />
+    <Compile Include="Services\ConnectionHealthService.cs" />
     <Compile Include="Services\ConnectionListService.cs" />
     <Compile Include="Services\CsvStorage.cs" />
     <Compile Include="Services\MetadataStorage.cs" />

@@ -150,6 +150,28 @@
             </Setter>
         </Style>
 
+        <Style x:Key="MultilineTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="104" />
+            <Setter Property="VerticalContentAlignment" Value="Top" />
+            <Setter Property="AcceptsReturn" Value="True" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="12"
+                                          VerticalAlignment="Stretch" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="PasswordBox">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="Background" Value="White" />
@@ -189,6 +211,16 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="InlineComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinWidth" Value="146" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
 
         <Style TargetType="DataGrid">
@@ -354,6 +386,11 @@
                             Click="ConnectButton_OnClick"
                             Content="Connect selected"
                             Style="{StaticResource PrimaryButtonStyle}" />
+                    <Button x:Name="CheckSelectedButton"
+                            Margin="0,0,0,10"
+                            Click="CheckSelectedButton_OnClick"
+                            Content="Check selected"
+                            Style="{StaticResource ButtonBaseStyle}" />
                     <Button x:Name="AddButton"
                             Margin="0,0,0,10"
                             Click="AddButton_OnClick"
@@ -394,7 +431,7 @@
                                Margin="12,10,0,0"
                                FontSize="11"
                                Foreground="{StaticResource TextMutedBrush}"
-                               Text="v1.1.0-phase2-mvp" />
+                               Text="v1.2.0-phase2-local-ops" />
                 </StackPanel>
 
             </Grid>
@@ -421,7 +458,7 @@
                                 <TextBlock x:Name="ConnectionsSubtitleTextBlock"
                                            Margin="0,6,0,0"
                                            Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="Click Host, User, or Password to copy. Use Connect to launch RDP." />
+                                           Text="Click Host, User, or Password to copy. Search also matches group, tags, and notes. Use Connect to launch RDP." />
                                 <WrapPanel Margin="0,14,0,0">
                                     <TextBlock Style="{StaticResource FilterGroupLabelStyle}"
                                                Text="Platform" />
@@ -462,6 +499,12 @@
                                                 Content="Other"
                                                 Style="{StaticResource FilterChipButtonStyle}" />
                                     </StackPanel>
+                                    <TextBlock Style="{StaticResource FilterGroupLabelStyle}"
+                                               Margin="12,7,10,0"
+                                               Text="Group" />
+                                    <ComboBox x:Name="ConnectionsGroupFilterComboBox"
+                                              SelectionChanged="ConnectionsGroupFilterComboBox_OnSelectionChanged"
+                                              Style="{StaticResource InlineComboBoxStyle}" />
                                 </WrapPanel>
                             </StackPanel>
                             <Grid Grid.Row="1">
@@ -500,6 +543,15 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
                                         <DataGridTextColumn Width="0.8*" Binding="{Binding StatusLabel}" Header="Status" />
+                                        <DataGridTemplateColumn Width="0.8*" Header="Health">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding HealthLabel}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding HealthDetails}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
                                         <DataGridTemplateColumn Width="0.75*" Header="Password">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
@@ -552,6 +604,7 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="PageInfoTextBlock"
                                            VerticalAlignment="Center"
@@ -563,14 +616,20 @@
                                            VerticalAlignment="Center"
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            Text="0 items" />
-                                <Button x:Name="PreviousPageButton"
+                                <Button x:Name="CheckPageButton"
                                         Grid.Column="2"
+                                        Margin="0,0,8,0"
+                                        Click="CheckPageButton_OnClick"
+                                        Content="Check page"
+                                        Style="{StaticResource ButtonBaseStyle}" />
+                                <Button x:Name="PreviousPageButton"
+                                        Grid.Column="3"
                                         Margin="0,0,8,0"
                                         Click="PreviousPageButton_OnClick"
                                         Content="Previous"
                                         Style="{StaticResource ButtonBaseStyle}" />
                                 <Button x:Name="NextPageButton"
-                                        Grid.Column="3"
+                                        Grid.Column="4"
                                         Click="NextPageButton_OnClick"
                                         Content="Next"
                                         Style="{StaticResource ButtonBaseStyle}" />
@@ -581,6 +640,9 @@
                     <Border Grid.Column="1" Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -649,14 +711,40 @@
                                      Margin="0,8,0,14"
                                      TextChanged="Editor_OnTextChanged" />
 
-                            <StackPanel Grid.Row="7">
-                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PASSWORD" />
-                                <PasswordBox x:Name="PasswordBox"
+                            <TextBlock Grid.Row="7" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PASSWORD" />
+                            <PasswordBox x:Name="PasswordBox"
+                                         Grid.Row="8"
+                                         Margin="0,8,0,14"
+                                         PasswordChanged="PasswordBox_OnPasswordChanged" />
+
+                            <Grid Grid.Row="9" Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,8,0">
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="GROUP" />
+                                    <TextBox x:Name="GroupTextBox"
                                              Margin="0,8,0,0"
-                                             PasswordChanged="PasswordBox_OnPasswordChanged" />
+                                             TextChanged="Editor_OnTextChanged" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="TAGS" />
+                                    <TextBox x:Name="TagsTextBox"
+                                             Margin="0,8,0,0"
+                                             TextChanged="Editor_OnTextChanged" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Grid.Row="10">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="NOTES" />
+                                <TextBox x:Name="NotesTextBox"
+                                         Margin="0,8,0,0"
+                                         TextChanged="Editor_OnTextChanged"
+                                         Style="{StaticResource MultilineTextBoxStyle}" />
                             </StackPanel>
 
-                            <Grid Grid.Row="8" Margin="0,22,0,0">
+                            <Grid Grid.Row="11" Margin="0,22,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />

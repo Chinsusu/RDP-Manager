@@ -11,8 +11,13 @@ Core fields:
 - Port
 - User
 - Password
+- GroupName
+- Tags
+- Notes
 - IsFavorite
 - LastConnectedUtc
+- HealthStatus
+- LastHealthCheckedUtc
 
 Phase 2 proposed fields:
 
@@ -74,7 +79,7 @@ Raw provider DTO:
 ## Storage ownership
 
 - CSV chi chua RDP credential data can ban
-- `meta.xml` chua local metadata va provider metadata
+- `meta.xml` chua local metadata (`favorite`, `recent`, `group`, `tags`, `notes`, `health`) va provider metadata
 - user settings chua token, sync preference, UI preference
 
 ## Why not put everything into CSV
@@ -120,3 +125,4 @@ Neu user da sua HostName local:
 - CSV 4 cot cu van phai doc duoc
 - CSV 5 cot moi la format chuan hien tai
 - Metadata migration phai backward-compatible
+- `Notes`, `Group`, `Tags`, va `Health` khong lam thay doi format CSV; chung chi song trong `meta.xml`

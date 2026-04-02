@@ -8,8 +8,10 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 
 - Toi muon xem toan bo danh sach host.
 - Toi muon tim nhanh theo HostName, Host, User.
+- Toi muon tim theo notes, group, va tags ma khong chen du lieu nay vao CSV.
 - Toi muon sua thong tin va connect ngay.
 - Toi muon tao entry moi ma khong ghi de entry cu.
+- Toi muon check nhanh host nao dang reachable tu may hien tai.
 
 ## Layout
 
@@ -19,12 +21,15 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Main list area:
   - Search box o sidebar
   - Platform filter chips: `All`, `Windows`, `Linux`
+  - Group filter inline
   - Data grid / list grid
   - Pagination footer, mac dinh `10 items/page`
+  - Health check action cho selected item va current page
   - Row actions: Connect, Edit, Delete
 - Right panel:
   - Entry editor
   - Favorite toggle
+  - Group / Tags / Notes
   - Apply entry
   - Clear form
 
@@ -32,6 +37,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 
 - Search input
 - Platform filter chips
+- Group filter
 - Connections grid
 - Pagination controls
 - Entry editor
@@ -44,6 +50,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Port
 - User
 - Password (masked)
+- Health
 - Action
 
 ## Row actions
@@ -59,6 +66,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Click `Password` -> copy password thuc vao clipboard
 - Double-click row khong duoc phep auto launch RDP
 - Chi nut `Connect` o row hoac `Connect selected` moi duoc mo session
+- `Check selected` va `Check page` chi cap nhat health metadata, khong mo RDP
 
 ## Validation rules
 
@@ -66,6 +74,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - `Port` default la `3389`
 - `HostName` la display label, co the de trong
 - Password duoc luu plain text theo yeu cau business hien tai
+- `Group`, `Tags`, `Notes` la local metadata, khong vao CSV
 
 ## Editor behavior
 
@@ -73,6 +82,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - `Apply entry` o create mode phai tao row moi.
 - `Apply entry` o edit mode phai update row dang edit.
 - Sau khi create thanh cong, form co the reset ve create mode de nhap tiep.
+- Search phai match ca `Group`, `Tags`, va `Notes`.
 
 ## States
 
@@ -98,3 +108,5 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Local list khong lam cao vo han theo so item; phai giu trong viewport bang pagination.
 - `Host`, `User`, `Password` co the copy bang 1 click.
 - Ket noi RDP chi xay ra khi user bam `Connect`.
+- User co the luu ghi chu local va phan loai entry bang `Group` / `Tags`.
+- User co the thuc hien TCP health check tren item chon hoac page hien tai.
