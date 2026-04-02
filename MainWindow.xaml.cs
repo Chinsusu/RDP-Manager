@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Data;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -18,27 +17,6 @@ using RdpManager.Services;
 
 namespace RdpManager
 {
-    public enum AppSection
-    {
-        Connections,
-        CloudminiSync,
-        Settings
-    }
-
-    public enum NavigationFilter
-    {
-        AllConnections,
-        Favorites,
-        Recent
-    }
-
-    public enum CloudminiPlatformFilter
-    {
-        All,
-        Windows,
-        Linux
-    }
-
     public partial class MainWindow : Window
     {
         private const int DwmUseImmersiveDarkMode = 20;
@@ -56,14 +34,15 @@ namespace RdpManager
         private bool _editorDirty;
         private bool _isPopulatingForm;
         private bool _isRebuildingEntriesPage;
-        private ICollectionView _entriesView;
         private int _currentEntriesPage = 1;
         private int _filteredEntriesCount;
         private readonly ObservableCollection<CloudminiSyncPreviewItem> _cloudminiPreviewItems = new ObservableCollection<CloudminiSyncPreviewItem>();
         private readonly List<CloudminiVps> _cloudminiRemoteItems = new List<CloudminiVps>();
         private NavigationFilter _currentNavigationFilter = NavigationFilter.AllConnections;
-        private CloudminiPlatformFilter _currentConnectionsPlatformFilter = CloudminiPlatformFilter.All;
-        private CloudminiPlatformFilter _currentCloudminiPlatformFilter = CloudminiPlatformFilter.All;
+        private PlatformFilter _currentConnectionsPlatformFilter = PlatformFilter.All;
+        private StatusFilter _currentConnectionsStatusFilter = StatusFilter.All;
+        private PlatformFilter _currentCloudminiPlatformFilter = PlatformFilter.All;
+        private StatusFilter _currentCloudminiStatusFilter = StatusFilter.All;
         private AppSection _currentAppSection = AppSection.Connections;
         private RdpEntry _editingEntry;
         private AppSettings _settings;
@@ -292,40 +271,92 @@ namespace RdpManager
 
         private void ConnectionsAllPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
         {
-            _currentConnectionsPlatformFilter = CloudminiPlatformFilter.All;
+            _currentConnectionsPlatformFilter = PlatformFilter.All;
             _currentEntriesPage = 1;
             RefreshEntriesView();
         }
 
         private void ConnectionsWindowsPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
         {
-            _currentConnectionsPlatformFilter = CloudminiPlatformFilter.Windows;
+            _currentConnectionsPlatformFilter = PlatformFilter.Windows;
             _currentEntriesPage = 1;
             RefreshEntriesView();
         }
 
         private void ConnectionsLinuxPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
         {
-            _currentConnectionsPlatformFilter = CloudminiPlatformFilter.Linux;
+            _currentConnectionsPlatformFilter = PlatformFilter.Linux;
+            _currentEntriesPage = 1;
+            RefreshEntriesView();
+        }
+
+        private void ConnectionsAllStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentConnectionsStatusFilter = StatusFilter.All;
+            _currentEntriesPage = 1;
+            RefreshEntriesView();
+        }
+
+        private void ConnectionsOnlineStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentConnectionsStatusFilter = StatusFilter.Online;
+            _currentEntriesPage = 1;
+            RefreshEntriesView();
+        }
+
+        private void ConnectionsOfflineStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentConnectionsStatusFilter = StatusFilter.Offline;
+            _currentEntriesPage = 1;
+            RefreshEntriesView();
+        }
+
+        private void ConnectionsOtherStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentConnectionsStatusFilter = StatusFilter.Other;
             _currentEntriesPage = 1;
             RefreshEntriesView();
         }
 
         private void CloudminiAllPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
         {
-            _currentCloudminiPlatformFilter = CloudminiPlatformFilter.All;
+            _currentCloudminiPlatformFilter = PlatformFilter.All;
             RebuildCloudminiPreview();
         }
 
         private void CloudminiWindowsPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
         {
-            _currentCloudminiPlatformFilter = CloudminiPlatformFilter.Windows;
+            _currentCloudminiPlatformFilter = PlatformFilter.Windows;
             RebuildCloudminiPreview();
         }
 
         private void CloudminiLinuxPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
         {
-            _currentCloudminiPlatformFilter = CloudminiPlatformFilter.Linux;
+            _currentCloudminiPlatformFilter = PlatformFilter.Linux;
+            RebuildCloudminiPreview();
+        }
+
+        private void CloudminiAllStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentCloudminiStatusFilter = StatusFilter.All;
+            RebuildCloudminiPreview();
+        }
+
+        private void CloudminiOnlineStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentCloudminiStatusFilter = StatusFilter.Online;
+            RebuildCloudminiPreview();
+        }
+
+        private void CloudminiOfflineStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentCloudminiStatusFilter = StatusFilter.Offline;
+            RebuildCloudminiPreview();
+        }
+
+        private void CloudminiOtherStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentCloudminiStatusFilter = StatusFilter.Other;
             RebuildCloudminiPreview();
         }
 
@@ -782,43 +813,13 @@ namespace RdpManager
 
         private void ConfigureEntriesView()
         {
-            _entriesView = CollectionViewSource.GetDefaultView(_entries);
-            if (_entriesView != null)
-            {
-                _entriesView.Filter = FilterEntry;
-            }
-
-            ApplyViewState();
-            RebuildEntriesPage();
-            UpdateSummary();
+            RefreshEntriesView();
         }
 
         private void RefreshEntriesView()
         {
-            ApplyViewState();
             RebuildEntriesPage();
             UpdateSummary();
-        }
-
-        private bool FilterEntry(object item)
-        {
-            var entry = item as RdpEntry;
-            if (entry == null)
-            {
-                return false;
-            }
-
-            var query = SearchTextBox == null ? string.Empty : (SearchTextBox.Text ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                return MatchesNavigationFilter(entry) && MatchesConnectionsPlatformFilter(entry);
-            }
-
-            return MatchesNavigationFilter(entry) &&
-                   MatchesConnectionsPlatformFilter(entry) &&
-                   (ContainsIgnoreCase(entry.HostName, query) ||
-                    ContainsIgnoreCase(entry.Host, query) ||
-                    ContainsIgnoreCase(entry.User, query));
         }
 
         private void UpdateSummary()
@@ -835,12 +836,6 @@ namespace RdpManager
 
             UpdateCloudminiEmptyState();
             UpdateSettingsSummary();
-        }
-
-        private static bool ContainsIgnoreCase(string value, string query)
-        {
-            return !string.IsNullOrEmpty(value) &&
-                   value.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void ApplyWindowFrameTheme()
@@ -958,35 +953,6 @@ namespace RdpManager
             }
         }
 
-        private void ApplyViewState()
-        {
-            if (_entriesView == null)
-            {
-                return;
-            }
-
-            _entriesView.SortDescriptions.Clear();
-            if (_currentNavigationFilter == NavigationFilter.Recent)
-            {
-                _entriesView.SortDescriptions.Add(new SortDescription("LastConnectedUtc", ListSortDirection.Descending));
-            }
-
-            _entriesView.Refresh();
-        }
-
-        private bool MatchesNavigationFilter(RdpEntry entry)
-        {
-            switch (_currentNavigationFilter)
-            {
-                case NavigationFilter.Favorites:
-                    return entry.IsFavorite;
-                case NavigationFilter.Recent:
-                    return entry.LastConnectedUtc.HasValue;
-                default:
-                    return true;
-            }
-        }
-
         private void UpdateNavigationVisuals()
         {
             SetNavigationVisual(AllConnectionsNavButton, AllConnectionsNavIcon, AllConnectionsNavText, _currentAppSection == AppSection.Connections && _currentNavigationFilter == NavigationFilter.AllConnections);
@@ -1021,7 +987,7 @@ namespace RdpManager
 
         private void UpdateEmptyState()
         {
-            if (EmptyStateTextBlock == null || _entriesView == null)
+            if (EmptyStateTextBlock == null)
             {
                 return;
             }
@@ -1032,25 +998,10 @@ namespace RdpManager
                 return;
             }
 
-            switch (_currentNavigationFilter)
-            {
-                case NavigationFilter.Favorites:
-                    EmptyStateTextBlock.Text = _currentConnectionsPlatformFilter == CloudminiPlatformFilter.All
-                        ? "No favorite connections yet. Select an entry and click the star in Entry editor."
-                        : string.Format("No {0} favorite connections match the current filter.", GetPlatformFilterLabel(_currentConnectionsPlatformFilter));
-                    break;
-                case NavigationFilter.Recent:
-                    EmptyStateTextBlock.Text = _currentConnectionsPlatformFilter == CloudminiPlatformFilter.All
-                        ? "No recent connections yet. Launch an RDP session once and it will appear here."
-                        : string.Format("No {0} recent connections match the current filter.", GetPlatformFilterLabel(_currentConnectionsPlatformFilter));
-                    break;
-                default:
-                    EmptyStateTextBlock.Text = _currentConnectionsPlatformFilter == CloudminiPlatformFilter.All
-                        ? "No connections found. Add a new entry or open another CSV file."
-                        : string.Format("No {0} connections match the current filter.", GetPlatformFilterLabel(_currentConnectionsPlatformFilter));
-                    break;
-            }
-
+            EmptyStateTextBlock.Text = ConnectionListService.GetEmptyStateMessage(
+                _currentNavigationFilter,
+                _currentConnectionsPlatformFilter,
+                _currentConnectionsStatusFilter);
             EmptyStateTextBlock.Visibility = Visibility.Visible;
         }
 
@@ -1069,43 +1020,14 @@ namespace RdpManager
 
             if (_cloudminiPreviewItems.Count == 0)
             {
-                switch (_currentCloudminiPlatformFilter)
-                {
-                    case CloudminiPlatformFilter.Windows:
-                        CloudminiEmptyStateTextBlock.Text = "No Windows VPS match the current filter.";
-                        break;
-                    case CloudminiPlatformFilter.Linux:
-                        CloudminiEmptyStateTextBlock.Text = "No Linux VPS match the current filter.";
-                        break;
-                    default:
-                        CloudminiEmptyStateTextBlock.Text = "No Cloudmini VPS loaded yet.";
-                        break;
-                }
-
+                CloudminiEmptyStateTextBlock.Text = CloudminiFilterService.GetEmptyStateMessage(
+                    _currentCloudminiPlatformFilter,
+                    _currentCloudminiStatusFilter);
                 CloudminiEmptyStateTextBlock.Visibility = Visibility.Visible;
                 return;
             }
 
             CloudminiEmptyStateTextBlock.Visibility = Visibility.Collapsed;
-        }
-
-        private bool MatchesConnectionsPlatformFilter(RdpEntry entry)
-        {
-            if (entry == null)
-            {
-                return false;
-            }
-
-            var isLinux = string.Equals((entry.Port ?? string.Empty).Trim(), "22", StringComparison.OrdinalIgnoreCase);
-            switch (_currentConnectionsPlatformFilter)
-            {
-                case CloudminiPlatformFilter.Windows:
-                    return !isLinux;
-                case CloudminiPlatformFilter.Linux:
-                    return isLinux;
-                default:
-                    return true;
-            }
         }
 
         private void SyncCloudminiOptionStateToSettings()
@@ -1154,7 +1076,10 @@ namespace RdpManager
                 return;
             }
 
-            var filteredRemoteItems = _cloudminiRemoteItems.Where(MatchesCloudminiPlatformFilter).ToList();
+            var filteredRemoteItems = CloudminiFilterService.Filter(
+                _cloudminiRemoteItems,
+                _currentCloudminiPlatformFilter,
+                _currentCloudminiStatusFilter);
             var preview = CloudminiSyncService.BuildPreview(_entries, filteredRemoteItems, BuildCurrentSyncOptions());
             _cloudminiPreviewItems.Clear();
             foreach (var item in preview)
@@ -1165,34 +1090,23 @@ namespace RdpManager
             UpdateCloudminiEmptyState();
         }
 
-        private bool MatchesCloudminiPlatformFilter(CloudminiVps remote)
-        {
-            if (remote == null)
-            {
-                return false;
-            }
-
-            var isLinux = string.Equals((remote.Port ?? string.Empty).Trim(), "22", StringComparison.OrdinalIgnoreCase);
-            switch (_currentCloudminiPlatformFilter)
-            {
-                case CloudminiPlatformFilter.Windows:
-                    return !isLinux;
-                case CloudminiPlatformFilter.Linux:
-                    return isLinux;
-                default:
-                    return true;
-            }
-        }
-
         private void UpdateFilterButtonVisuals()
         {
-            SetFilterButtonVisual(ConnectionsAllPlatformFilterButton, _currentConnectionsPlatformFilter == CloudminiPlatformFilter.All);
-            SetFilterButtonVisual(ConnectionsWindowsPlatformFilterButton, _currentConnectionsPlatformFilter == CloudminiPlatformFilter.Windows);
-            SetFilterButtonVisual(ConnectionsLinuxPlatformFilterButton, _currentConnectionsPlatformFilter == CloudminiPlatformFilter.Linux);
+            SetFilterButtonVisual(ConnectionsAllPlatformFilterButton, _currentConnectionsPlatformFilter == PlatformFilter.All);
+            SetFilterButtonVisual(ConnectionsWindowsPlatformFilterButton, _currentConnectionsPlatformFilter == PlatformFilter.Windows);
+            SetFilterButtonVisual(ConnectionsLinuxPlatformFilterButton, _currentConnectionsPlatformFilter == PlatformFilter.Linux);
+            SetFilterButtonVisual(ConnectionsAllStatusFilterButton, _currentConnectionsStatusFilter == StatusFilter.All);
+            SetFilterButtonVisual(ConnectionsOnlineStatusFilterButton, _currentConnectionsStatusFilter == StatusFilter.Online);
+            SetFilterButtonVisual(ConnectionsOfflineStatusFilterButton, _currentConnectionsStatusFilter == StatusFilter.Offline);
+            SetFilterButtonVisual(ConnectionsOtherStatusFilterButton, _currentConnectionsStatusFilter == StatusFilter.Other);
 
-            SetFilterButtonVisual(CloudminiAllPlatformFilterButton, _currentCloudminiPlatformFilter == CloudminiPlatformFilter.All);
-            SetFilterButtonVisual(CloudminiWindowsPlatformFilterButton, _currentCloudminiPlatformFilter == CloudminiPlatformFilter.Windows);
-            SetFilterButtonVisual(CloudminiLinuxPlatformFilterButton, _currentCloudminiPlatformFilter == CloudminiPlatformFilter.Linux);
+            SetFilterButtonVisual(CloudminiAllPlatformFilterButton, _currentCloudminiPlatformFilter == PlatformFilter.All);
+            SetFilterButtonVisual(CloudminiWindowsPlatformFilterButton, _currentCloudminiPlatformFilter == PlatformFilter.Windows);
+            SetFilterButtonVisual(CloudminiLinuxPlatformFilterButton, _currentCloudminiPlatformFilter == PlatformFilter.Linux);
+            SetFilterButtonVisual(CloudminiAllStatusFilterButton, _currentCloudminiStatusFilter == StatusFilter.All);
+            SetFilterButtonVisual(CloudminiOnlineStatusFilterButton, _currentCloudminiStatusFilter == StatusFilter.Online);
+            SetFilterButtonVisual(CloudminiOfflineStatusFilterButton, _currentCloudminiStatusFilter == StatusFilter.Offline);
+            SetFilterButtonVisual(CloudminiOtherStatusFilterButton, _currentCloudminiStatusFilter == StatusFilter.Other);
         }
 
         private void SetFilterButtonVisual(Button button, bool isActive)
@@ -1213,48 +1127,22 @@ namespace RdpManager
                 : (Brush)(FindResource("TextPrimaryBrush") as Brush ?? Brushes.Black);
         }
 
-        private static string GetPlatformFilterLabel(CloudminiPlatformFilter filter)
-        {
-            switch (filter)
-            {
-                case CloudminiPlatformFilter.Windows:
-                    return "Windows";
-                case CloudminiPlatformFilter.Linux:
-                    return "Linux";
-                default:
-                    return "All";
-            }
-        }
-
         private void RebuildEntriesPage()
         {
-            if (_entriesView == null)
-            {
-                _filteredEntriesCount = 0;
-                _pagedEntries.Clear();
-                UpdateEntriesPaginationControls();
-                return;
-            }
+            var pageResult = ConnectionListService.BuildPage(
+                _entries,
+                SearchTextBox == null ? string.Empty : SearchTextBox.Text,
+                _currentNavigationFilter,
+                _currentConnectionsPlatformFilter,
+                _currentConnectionsStatusFilter,
+                _currentEntriesPage,
+                EntriesPageSize);
 
-            var filteredEntries = _entriesView.Cast<RdpEntry>().ToList();
-            _filteredEntriesCount = filteredEntries.Count;
-
-            var totalPages = GetTotalEntriesPages();
-            if (_currentEntriesPage > totalPages)
-            {
-                _currentEntriesPage = totalPages;
-            }
-
-            if (_currentEntriesPage < 1)
-            {
-                _currentEntriesPage = 1;
-            }
+            _filteredEntriesCount = pageResult.TotalCount;
+            _currentEntriesPage = pageResult.CurrentPage;
 
             var currentSelection = EntriesGrid == null ? null : EntriesGrid.SelectedItem as RdpEntry;
-            var pageEntries = filteredEntries
-                .Skip((_currentEntriesPage - 1) * EntriesPageSize)
-                .Take(EntriesPageSize)
-                .ToList();
+            var pageEntries = pageResult.Items;
 
             _isRebuildingEntriesPage = true;
             try
@@ -1313,12 +1201,17 @@ namespace RdpManager
 
         private void NavigateToEntry(RdpEntry entry)
         {
-            if (entry == null || _entriesView == null)
+            if (entry == null)
             {
                 return;
             }
 
-            var filteredEntries = _entriesView.Cast<RdpEntry>().ToList();
+            var filteredEntries = ConnectionListService.BuildFilteredEntries(
+                _entries,
+                SearchTextBox == null ? string.Empty : SearchTextBox.Text,
+                _currentNavigationFilter,
+                _currentConnectionsPlatformFilter,
+                _currentConnectionsStatusFilter);
             var index = filteredEntries.IndexOf(entry);
             if (index < 0)
             {
@@ -1343,7 +1236,8 @@ namespace RdpManager
                 return;
             }
 
-            if (onlySelected && !_cloudminiPreviewItems.Any(item => item.IsSelected))
+            var selectedItems = _cloudminiPreviewItems.Where(item => item.IsSelected).ToList();
+            if (onlySelected && selectedItems.Count == 0)
             {
                 MessageBox.Show(this, "Select at least one VPS to sync.", "Cloudmini Sync", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
@@ -1352,6 +1246,12 @@ namespace RdpManager
             try
             {
                 Mouse.OverrideCursor = Cursors.Wait;
+                string backupPath = null;
+                if (selectedItems.Count > 1)
+                {
+                    backupPath = BackupStorage.CreatePreSyncBackup(_currentFilePath, _entries);
+                }
+
                 var result = CloudminiSyncService.ApplySync(_entries, _cloudminiPreviewItems, BuildCurrentSyncOptions());
 
                 _settings.LastCloudminiSyncUtc = DateTime.UtcNow;
@@ -1368,16 +1268,21 @@ namespace RdpManager
                 RefreshEntriesView();
                 RebuildCloudminiPreview();
                 UpdateSettingsSummary();
-                CloudminiStatusTextBlock.Text = _settings.LastCloudminiSyncSummary;
+                CloudminiStatusTextBlock.Text = string.IsNullOrWhiteSpace(backupPath)
+                    ? _settings.LastCloudminiSyncSummary
+                    : _settings.LastCloudminiSyncSummary + " | Backup created";
 
                 MessageBox.Show(
                     this,
                     string.Format(
-                        "Cloudmini sync completed.\nCreated: {0}\nUpdated: {1}\nSkipped: {2}\nConflicts: {3}",
+                        "Cloudmini sync completed.\nCreated: {0}\nUpdated: {1}\nSkipped: {2}\nConflicts: {3}{4}",
                         result.CreatedCount,
                         result.UpdatedCount,
                         result.SkippedCount,
-                        result.ConflictCount),
+                        result.ConflictCount,
+                        string.IsNullOrWhiteSpace(backupPath)
+                            ? string.Empty
+                            : "\nBackup: " + backupPath),
                     "Cloudmini Sync",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
