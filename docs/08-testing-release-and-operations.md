@@ -27,6 +27,7 @@ Dung 3 lop test:
 - `GET /account` thanh cong
 - `GET /vps` thanh cong
 - Empty VPS list
+- Cloudmini filter `All / Windows / Linux`
 - Sync all
 - Sync selected
 - Merge update khong duplicate
@@ -39,6 +40,10 @@ Dung 3 lop test:
 - Metadata file hong van phai load duoc CSV
 - Favorites/Recent van dung sau sync
 - Connect sau sync van mo duoc `mstsc`
+- Local list phan trang dung `10 items/page`
+- Click `Host`, `User`, `Password` copy dung gia tri
+- Double-click row khong duoc auto connect
+- Settings co the quay lai `All connections`
 
 ## Release checklist
 

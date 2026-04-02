@@ -5,8 +5,9 @@ Bo tai lieu nay mo ta du an theo cach lam viec thuc te, de co the tiep tuc phat 
 ## Current baseline
 
 - Phase 1 da co: WPF GUI quan ly danh sach RDP bang CSV.
-- App hien tai da ho tro: CRUD local entries, Favorites, Recent, search, launch `mstsc`.
-- Phase tiep theo duoc dinh huong trong docs: tich hop Cloudmini API de sync VPS vao danh sach.
+- App hien tai da ho tro: CRUD local entries, Favorites, Recent, search, launch `mstsc`, Cloudmini token test, fetch VPS, sync preview, sync vao local list.
+- App hien tai da co them: platform filter cho local list va Cloudmini Sync, pagination local list, click-to-copy cho Host/User/Password, va explicit-connect only.
+- Phase 2 da o muc MVP dang hoat dong, docs nay mo ta ca hien trang va huong mo rong tiep theo.
 - Technical target cho Phase 2: retarget len `.NET Framework 4.8.1`.
 
 ## Doc map

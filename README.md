@@ -2,9 +2,21 @@
 
 WPF app nho gon de quan ly danh sach RDP trong file CSV va mo `mstsc` khi click.
 
+Trang thai hien tai:
+
+- local list + CRUD + Favorites + Recent
+- Cloudmini Sync MVP
+- platform filter `Windows / Linux`
+- pagination local list `10 items/page`
+- click-to-copy cho `Host`, `User`, `Password`
+
 ## Project docs
 
 Bo tai lieu thiet ke day du nam tai [docs/README.md](./docs/README.md).
+
+## Changelog
+
+Lich su thay doi nam tai [CHANGELOG.md](./CHANGELOG.md).
 
 ## CSV format
 

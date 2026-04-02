@@ -108,7 +108,7 @@
 
         <Style x:Key="GridActionButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
             <Setter Property="Height" Value="40" />
-            <Setter Property="MinWidth" Value="64" />
+            <Setter Property="MinWidth" Value="58" />
             <Setter Property="Margin" Value="0,0,6,0" />
             <Setter Property="Padding" Value="10,0" />
             <Setter Property="FontSize" Value="13" />
@@ -172,6 +172,15 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="FilterChipButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="MinWidth" Value="78" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="FontSize" Value="12" />
         </Style>
 
         <Style TargetType="DataGrid">
@@ -321,9 +330,17 @@
                             <TextBlock x:Name="RecentNavText" Margin="12,0,0,0" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Text="Recent" />
                         </DockPanel>
                     </Button>
+                    <Button x:Name="CloudminiSyncNavButton"
+                            Style="{StaticResource NavButtonStyle}"
+                            Click="CloudminiSyncNavButton_OnClick">
+                        <DockPanel>
+                            <TextBlock x:Name="CloudminiSyncNavIcon" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextSecondaryBrush}" Text="&#xE753;" />
+                            <TextBlock x:Name="CloudminiSyncNavText" Margin="12,0,0,0" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Text="Cloudmini Sync" />
+                        </DockPanel>
+                    </Button>
                 </StackPanel>
 
-                <StackPanel Grid.Row="3" Margin="0,24,0,0">
+                <StackPanel x:Name="ConnectionsActionsPanel" Grid.Row="3" Margin="0,24,0,0">
                     <Button x:Name="ConnectButton"
                             Margin="0,0,0,10"
                             Click="ConnectButton_OnClick"
@@ -355,15 +372,30 @@
                             Style="{StaticResource DangerButtonStyle}" />
                 </StackPanel>
 
+                <StackPanel Grid.Row="4"
+                            VerticalAlignment="Bottom">
+                    <Button x:Name="SettingsNavButton"
+                            Style="{StaticResource NavButtonStyle}"
+                            Click="SettingsNavButton_OnClick">
+                        <DockPanel>
+                            <TextBlock x:Name="SettingsNavIcon" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextSecondaryBrush}" Text="&#xE713;" />
+                            <TextBlock x:Name="SettingsNavText" Margin="12,0,0,0" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Text="Settings" />
+                        </DockPanel>
+                    </Button>
+                    <TextBlock x:Name="VersionTagTextBlock"
+                               Margin="12,10,0,0"
+                               FontSize="11"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Text="v1.1.0-phase2-mvp" />
+                </StackPanel>
+
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Column="1"
-                      Margin="0,14,14,14"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
+        <Grid Grid.Column="1"
+              Margin="0,14,14,14">
             <Grid>
-                <Grid>
+                <Grid x:Name="ConnectionsView">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="264" />
@@ -374,10 +406,29 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <StackPanel Margin="0,0,0,16">
                                 <TextBlock FontSize="24" FontWeight="Bold" Text="Saved connections" />
-                                <TextBlock Margin="0,6,0,0" Foreground="{StaticResource TextSecondaryBrush}" Text="Double-click a row to launch Remote Desktop immediately." />
+                                <TextBlock x:Name="ConnectionsSubtitleTextBlock"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Click Host, User, or Password to copy. Use Connect to launch RDP." />
+                                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                    <Button x:Name="ConnectionsAllPlatformFilterButton"
+                                            Click="ConnectionsAllPlatformFilterButton_OnClick"
+                                            Content="All"
+                                            Style="{StaticResource FilterChipButtonStyle}" />
+                                    <Button x:Name="ConnectionsWindowsPlatformFilterButton"
+                                            Click="ConnectionsWindowsPlatformFilterButton_OnClick"
+                                            Content="Windows"
+                                            Style="{StaticResource FilterChipButtonStyle}" />
+                                    <Button x:Name="ConnectionsLinuxPlatformFilterButton"
+                                            Margin="0"
+                                            Click="ConnectionsLinuxPlatformFilterButton_OnClick"
+                                            Content="Linux"
+                                            Style="{StaticResource FilterChipButtonStyle}" />
+                                </StackPanel>
                             </StackPanel>
                             <Grid Grid.Row="1">
                                 <DataGrid x:Name="EntriesGrid"
@@ -386,22 +437,47 @@
                                            IsReadOnly="True"
                                            SelectionMode="Single"
                                            SelectionUnit="FullRow"
-                                           MouseDoubleClick="EntriesGrid_OnMouseDoubleClick"
                                            SelectionChanged="EntriesGrid_OnSelectionChanged">
-                                    <DataGrid.Resources>
-                                        <Style x:Key="CellTextStyle" TargetType="TextBlock">
-                                            <Setter Property="VerticalAlignment" Value="Center" />
-                                            <Setter Property="HorizontalAlignment" Value="Left" />
-                                            <Setter Property="TextAlignment" Value="Left" />
-                                        </Style>
-                                    </DataGrid.Resources>
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Width="1.1*" Binding="{Binding HostName}" ElementStyle="{StaticResource CellTextStyle}" Header="HostName" />
-                                        <DataGridTextColumn Width="1.3*" Binding="{Binding Host}" ElementStyle="{StaticResource CellTextStyle}" Header="Host" />
-                                        <DataGridTextColumn Width="0.7*" Binding="{Binding Port}" ElementStyle="{StaticResource CellTextStyle}" Header="Port" />
-                                        <DataGridTextColumn Width="0.9*" Binding="{Binding User}" ElementStyle="{StaticResource CellTextStyle}" Header="User" />
-                                        <DataGridTextColumn Width="0.8*" Binding="{Binding MaskedPassword}" ElementStyle="{StaticResource CellTextStyle}" Header="Password" />
-                                        <DataGridTemplateColumn Width="270" Header="Action">
+                                        <DataGridTextColumn Width="1.1*" Binding="{Binding HostName}" Header="HostName" />
+                                        <DataGridTemplateColumn Width="1.3*" Header="Host">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Host}"
+                                                               Cursor="Hand"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="Click to copy host"
+                                                               Tag="{Binding Host}"
+                                                               MouseLeftButtonUp="CopyValueTextBlock_OnMouseLeftButtonUp" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Width="0.7*" Binding="{Binding Port}" Header="Port" />
+                                        <DataGridTemplateColumn Width="0.9*" Header="User">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding User}"
+                                                               Cursor="Hand"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="Click to copy user"
+                                                               Tag="{Binding User}"
+                                                               MouseLeftButtonUp="CopyValueTextBlock_OnMouseLeftButtonUp" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Width="0.8*" Header="Password">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding MaskedPassword}"
+                                                               Cursor="Hand"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="Click to copy password"
+                                                               Tag="{Binding Password}"
+                                                               MouseLeftButtonUp="CopyValueTextBlock_OnMouseLeftButtonUp" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Width="236" Header="Action">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <Grid VerticalAlignment="Center" HorizontalAlignment="Left">
@@ -434,6 +510,35 @@
                                            FontSize="14"
                                            Text="No connections to show."
                                            Visibility="Collapsed" />
+                            </Grid>
+                            <Grid Grid.Row="2" Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="PageInfoTextBlock"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Page 1 / 1" />
+                                <TextBlock x:Name="PageCountSummaryTextBlock"
+                                           Grid.Column="1"
+                                           Margin="12,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="0 items" />
+                                <Button x:Name="PreviousPageButton"
+                                        Grid.Column="2"
+                                        Margin="0,0,8,0"
+                                        Click="PreviousPageButton_OnClick"
+                                        Content="Previous"
+                                        Style="{StaticResource ButtonBaseStyle}" />
+                                <Button x:Name="NextPageButton"
+                                        Grid.Column="3"
+                                        Click="NextPageButton_OnClick"
+                                        Content="Next"
+                                        Style="{StaticResource ButtonBaseStyle}" />
                             </Grid>
                         </Grid>
                     </Border>
@@ -537,7 +642,314 @@
                         </Grid>
                     </Border>
                 </Grid>
+
+                <Border x:Name="CloudminiView"
+                        Visibility="Collapsed"
+                        Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel>
+                            <TextBlock FontSize="24" FontWeight="Bold" Text="Cloudmini Sync" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Test token, fetch VPS from Cloudmini, preview changes, and sync them into your local RDP list."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <Grid Grid.Row="1" Margin="0,20,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="140" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="CLOUDMINI TOKEN" />
+                                <PasswordBox x:Name="CloudminiTokenPasswordBox"
+                                             Margin="0,8,0,0" />
+                                <CheckBox x:Name="RememberCloudminiTokenCheckBox"
+                                          Margin="0,10,0,0"
+                                          Content="Remember token on this machine" />
+                            </StackPanel>
+                            <Button x:Name="TestCloudminiButton"
+                                    Grid.Column="1"
+                                    Margin="0,20,12,0"
+                                    VerticalAlignment="Top"
+                                    Click="TestCloudminiButton_OnClick"
+                                    Content="Test connection"
+                                    Style="{StaticResource ButtonBaseStyle}" />
+                            <Button x:Name="FetchCloudminiButton"
+                                    Grid.Column="2"
+                                    Margin="0,20,0,0"
+                                    VerticalAlignment="Top"
+                                    Click="FetchCloudminiButton_OnClick"
+                                    Content="Fetch VPS"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+
+                        <Grid Grid.Row="2" Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Margin="0,0,8,0"
+                                    Padding="16"
+                                    Background="{StaticResource SurfaceBrush}"
+                                    BorderBrush="{StaticResource CardBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="12">
+                                <StackPanel>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="ACCOUNT" />
+                                    <TextBlock x:Name="CloudminiAccountSummaryTextBlock"
+                                               Margin="0,8,0,0"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               Text="Not connected" />
+                                    <TextBlock x:Name="CloudminiStatusTextBlock"
+                                               Margin="0,6,0,0"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Text="Enter a token and test the connection." 
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1"
+                                    Margin="8,0,0,0"
+                                    Padding="16"
+                                    Background="{StaticResource SurfaceBrush}"
+                                    BorderBrush="{StaticResource CardBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="12">
+                                <StackPanel>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="SYNC OPTIONS" />
+                                    <CheckBox x:Name="KeepLocalHostNameCheckBox"
+                                              Margin="0,10,0,0"
+                                              Checked="CloudminiOptionCheckBox_OnChanged"
+                                              Unchecked="CloudminiOptionCheckBox_OnChanged"
+                                              Content="Keep local HostName" />
+                                    <CheckBox x:Name="OverwritePasswordCheckBox"
+                                              Margin="0,8,0,0"
+                                              Checked="CloudminiOptionCheckBox_OnChanged"
+                                              Unchecked="CloudminiOptionCheckBox_OnChanged"
+                                              Content="Overwrite password from provider" />
+                                    <CheckBox x:Name="ImportOnlyOnlineCheckBox"
+                                              Margin="0,8,0,0"
+                                              Checked="CloudminiOptionCheckBox_OnChanged"
+                                              Unchecked="CloudminiOptionCheckBox_OnChanged"
+                                              Content="Import only online VPS" />
+                                    <TextBlock Margin="0,14,0,0"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Text="PLATFORM FILTER" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <Button x:Name="CloudminiAllPlatformFilterButton"
+                                                Click="CloudminiAllPlatformFilterButton_OnClick"
+                                                Content="All"
+                                                Style="{StaticResource FilterChipButtonStyle}" />
+                                        <Button x:Name="CloudminiWindowsPlatformFilterButton"
+                                                Click="CloudminiWindowsPlatformFilterButton_OnClick"
+                                                Content="Windows"
+                                                Style="{StaticResource FilterChipButtonStyle}" />
+                                        <Button x:Name="CloudminiLinuxPlatformFilterButton"
+                                                Margin="0"
+                                                Click="CloudminiLinuxPlatformFilterButton_OnClick"
+                                                Content="Linux"
+                                                Style="{StaticResource FilterChipButtonStyle}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Grid Grid.Row="3">
+                            <DataGrid x:Name="CloudminiPreviewGrid"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      IsReadOnly="False"
+                                      SelectionMode="Single"
+                                      SelectionUnit="FullRow">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Width="70"
+                                                            Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            Header="Sync" />
+                                    <DataGridTextColumn Width="90"
+                                                        Binding="{Binding SourceId}"
+                                                        IsReadOnly="True"
+                                                        Header="VPS ID" />
+                                    <DataGridTextColumn Width="1.2*"
+                                                        Binding="{Binding Ip}"
+                                                        IsReadOnly="True"
+                                                        Header="IP" />
+                                    <DataGridTextColumn Width="0.7*"
+                                                        Binding="{Binding Port}"
+                                                        IsReadOnly="True"
+                                                        Header="Port" />
+                                    <DataGridTextColumn Width="0.9*"
+                                                        Binding="{Binding User}"
+                                                        IsReadOnly="True"
+                                                        Header="User" />
+                                    <DataGridTextColumn Width="0.9*"
+                                                        Binding="{Binding Status}"
+                                                        IsReadOnly="True"
+                                                        Header="Status" />
+                                    <DataGridTextColumn Width="0.9*"
+                                                        Binding="{Binding Platform}"
+                                                        IsReadOnly="True"
+                                                        Header="Platform" />
+                                    <DataGridTextColumn Width="1.1*"
+                                                        Binding="{Binding Location}"
+                                                        IsReadOnly="True"
+                                                        Header="Location" />
+                                    <DataGridTextColumn Width="1.0*"
+                                                        Binding="{Binding ExpiredAtDisplay}"
+                                                        IsReadOnly="True"
+                                                        Header="Expires" />
+                                    <DataGridTextColumn Width="0.9*"
+                                                        Binding="{Binding SyncAction}"
+                                                        IsReadOnly="True"
+                                                        Header="Action" />
+                                    <DataGridTextColumn Width="1.3*"
+                                                        Binding="{Binding Note}"
+                                                        IsReadOnly="True"
+                                                        Header="Note" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock x:Name="CloudminiEmptyStateTextBlock"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="14"
+                                       Text="No Cloudmini VPS loaded yet."
+                                       Visibility="Visible" />
+                        </Grid>
+
+                        <Grid Grid.Row="4" Margin="0,20,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="CloudminiLastSyncTextBlock"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Last sync: never" />
+                            <Button x:Name="SyncSelectedCloudminiButton"
+                                    Grid.Column="1"
+                                    Margin="12,0,8,0"
+                                    Click="SyncSelectedCloudminiButton_OnClick"
+                                    Content="Sync selected"
+                                    Style="{StaticResource ButtonBaseStyle}" />
+                            <Button x:Name="SyncAllCloudminiButton"
+                                    Grid.Column="2"
+                                    Click="SyncAllCloudminiButton_OnClick"
+                                    Content="Sync all"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border x:Name="SettingsView"
+                        Visibility="Collapsed"
+                        Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontSize="24" FontWeight="Bold" Text="Settings" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Manage Cloudmini token storage, default sync behavior, and local diagnostics."
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button x:Name="BackToConnectionsButton"
+                                    Grid.Column="1"
+                                    Click="BackToConnectionsButton_OnClick"
+                                    Content="Back to connections"
+                                    Style="{StaticResource ButtonBaseStyle}" />
+                        </Grid>
+
+                        <Border Grid.Row="1"
+                                Margin="0,20,0,16"
+                                Padding="16"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                            <StackPanel>
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="DEFAULT SYNC SETTINGS" />
+                                <CheckBox x:Name="SettingsKeepLocalHostNameCheckBox"
+                                          Margin="0,10,0,0"
+                                          Content="Keep local HostName by default" />
+                                <CheckBox x:Name="SettingsOverwritePasswordCheckBox"
+                                          Margin="0,8,0,0"
+                                          Content="Overwrite password from provider by default" />
+                                <CheckBox x:Name="SettingsImportOnlyOnlineCheckBox"
+                                          Margin="0,8,0,0"
+                                          Content="Import only online VPS by default" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2"
+                                Padding="16"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                            <StackPanel>
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="DIAGNOSTICS" />
+                                <TextBlock x:Name="CurrentCsvPathTextBlock"
+                                           Margin="0,10,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="CSV: -" />
+                                <TextBlock x:Name="SettingsPathTextBlock"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="Settings: -" />
+                                <TextBlock x:Name="SavedTokenStatusTextBlock"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="Saved token: not stored" />
+                                <TextBlock x:Name="AppVersionTextBlock"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="Version: -" />
+                            </StackPanel>
+                        </Border>
+
+                        <Grid Grid.Row="3" Margin="0,20,0,0" VerticalAlignment="Top">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="SaveSettingsButton"
+                                    Margin="0,0,8,0"
+                                    Click="SaveSettingsButton_OnClick"
+                                    Content="Save settings"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                            <Button x:Name="ClearSavedTokenButton"
+                                    Grid.Column="1"
+                                    Click="ClearSavedTokenButton_OnClick"
+                                    Content="Clear saved token"
+                                    Style="{StaticResource ButtonBaseStyle}" />
+                        </Grid>
+                    </Grid>
+                </Border>
             </Grid>
-        </ScrollViewer>
+        </Grid>
     </Grid>
 </Window>

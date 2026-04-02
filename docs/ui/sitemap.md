@@ -13,6 +13,9 @@ flowchart TD
     B --> B1["Entry editor"]
     B --> B2["Row actions"]
     B --> B3["Connect flow"]
+    B --> B4["Platform filter chips"]
+    B --> B5["Pagination"]
+    B --> B6["Click-to-copy fields"]
 
     C --> C1["Filtered list"]
     C --> C2["Entry editor"]
@@ -25,11 +28,13 @@ flowchart TD
     E --> E3["Fetch VPS"]
     E --> E4["Preview merge"]
     E --> E5["Apply sync"]
+    E --> E6["Platform filter chips"]
 
     F --> F1["CSV path"]
     F --> F2["Token storage"]
     F --> F3["Sync defaults"]
     F --> F4["About and diagnostics"]
+    F --> F5["Back to connections"]
 ```
 
 ## Navigation inventory

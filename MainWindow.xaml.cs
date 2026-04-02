@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
@@ -15,11 +18,25 @@ using RdpManager.Services;
 
 namespace RdpManager
 {
+    public enum AppSection
+    {
+        Connections,
+        CloudminiSync,
+        Settings
+    }
+
     public enum NavigationFilter
     {
         AllConnections,
         Favorites,
         Recent
+    }
+
+    public enum CloudminiPlatformFilter
+    {
+        All,
+        Windows,
+        Linux
     }
 
     public partial class MainWindow : Window
@@ -29,16 +46,28 @@ namespace RdpManager
         private const int DwmBorderColor = 34;
         private const int DwmCaptionColor = 35;
         private const int DwmTextColor = 36;
+        private const int EntriesPageSize = 10;
 
         private ObservableCollection<RdpEntry> _entries = new ObservableCollection<RdpEntry>();
+        private readonly ObservableCollection<RdpEntry> _pagedEntries = new ObservableCollection<RdpEntry>();
         private string _currentFilePath;
         private bool _isDirty;
         private bool _isCreatingNew = true;
         private bool _editorDirty;
         private bool _isPopulatingForm;
+        private bool _isRebuildingEntriesPage;
         private ICollectionView _entriesView;
+        private int _currentEntriesPage = 1;
+        private int _filteredEntriesCount;
+        private readonly ObservableCollection<CloudminiSyncPreviewItem> _cloudminiPreviewItems = new ObservableCollection<CloudminiSyncPreviewItem>();
+        private readonly List<CloudminiVps> _cloudminiRemoteItems = new List<CloudminiVps>();
         private NavigationFilter _currentNavigationFilter = NavigationFilter.AllConnections;
+        private CloudminiPlatformFilter _currentConnectionsPlatformFilter = CloudminiPlatformFilter.All;
+        private CloudminiPlatformFilter _currentCloudminiPlatformFilter = CloudminiPlatformFilter.All;
+        private AppSection _currentAppSection = AppSection.Connections;
         private RdpEntry _editingEntry;
+        private AppSettings _settings;
+        private string _sessionCloudminiToken;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int attributeValue, int attributeSize);
@@ -47,8 +76,13 @@ namespace RdpManager
         {
             InitializeComponent();
 
-            EntriesGrid.ItemsSource = _entries;
+            EntriesGrid.ItemsSource = _pagedEntries;
+            CloudminiPreviewGrid.ItemsSource = _cloudminiPreviewItems;
             _currentFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "clients.csv");
+            _settings = SettingsStorage.Load();
+
+            ApplySettingsToUi();
+            UpdateVersionText();
 
             CsvStorage.EnsureFileExists(_currentFilePath);
             LoadEntries(_currentFilePath);
@@ -164,6 +198,16 @@ namespace RdpManager
             SetNavigationFilter(NavigationFilter.Recent);
         }
 
+        private void CloudminiSyncNavButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            SetAppSection(AppSection.CloudminiSync);
+        }
+
+        private void SettingsNavButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            SetAppSection(AppSection.Settings);
+        }
+
         private void FavoriteButton_OnClick(object sender, RoutedEventArgs e)
         {
             var entry = _editingEntry;
@@ -176,6 +220,164 @@ namespace RdpManager
             MetadataStorage.Save(_currentFilePath, _entries);
             RefreshEntriesView();
             UpdateSummary();
+        }
+
+        private void TestCloudminiButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                CloudminiStatusTextBlock.Text = "Testing Cloudmini token...";
+
+                var token = GetCloudminiToken();
+                var account = CloudminiClient.GetAccountSummary(token);
+                _sessionCloudminiToken = token;
+
+                SettingsStorage.SaveCloudminiToken(_settings, token, RememberCloudminiTokenCheckBox.IsChecked == true);
+                SettingsStorage.Save(_settings);
+
+                CloudminiAccountSummaryTextBlock.Text = string.Format("Balance: {0} | Credit: {1}", account.Balance, account.Credit);
+                CloudminiStatusTextBlock.Text = "Cloudmini connection successful.";
+                UpdateSettingsSummary();
+            }
+            catch (Exception ex)
+            {
+                CloudminiAccountSummaryTextBlock.Text = "Not connected";
+                CloudminiStatusTextBlock.Text = ex.Message;
+                MessageBox.Show(this, ex.Message, "Cloudmini Test Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private void FetchCloudminiButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                CloudminiStatusTextBlock.Text = "Fetching VPS from Cloudmini...";
+
+                var token = GetCloudminiToken();
+                var vpsItems = CloudminiClient.GetVps(token);
+
+                _sessionCloudminiToken = token;
+                _cloudminiRemoteItems.Clear();
+                _cloudminiRemoteItems.AddRange(vpsItems);
+
+                SettingsStorage.SaveCloudminiToken(_settings, token, RememberCloudminiTokenCheckBox.IsChecked == true);
+                SettingsStorage.Save(_settings);
+
+                RebuildCloudminiPreview();
+                CloudminiStatusTextBlock.Text = string.Format("Loaded {0} VPS from Cloudmini.", _cloudminiRemoteItems.Count);
+                UpdateSettingsSummary();
+            }
+            catch (Exception ex)
+            {
+                CloudminiStatusTextBlock.Text = ex.Message;
+                MessageBox.Show(this, ex.Message, "Cloudmini Fetch Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private void CloudminiOptionCheckBox_OnChanged(object sender, RoutedEventArgs e)
+        {
+            SyncCloudminiOptionStateToSettings();
+            RebuildCloudminiPreview();
+        }
+
+        private void ConnectionsAllPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentConnectionsPlatformFilter = CloudminiPlatformFilter.All;
+            _currentEntriesPage = 1;
+            RefreshEntriesView();
+        }
+
+        private void ConnectionsWindowsPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentConnectionsPlatformFilter = CloudminiPlatformFilter.Windows;
+            _currentEntriesPage = 1;
+            RefreshEntriesView();
+        }
+
+        private void ConnectionsLinuxPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentConnectionsPlatformFilter = CloudminiPlatformFilter.Linux;
+            _currentEntriesPage = 1;
+            RefreshEntriesView();
+        }
+
+        private void CloudminiAllPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentCloudminiPlatformFilter = CloudminiPlatformFilter.All;
+            RebuildCloudminiPreview();
+        }
+
+        private void CloudminiWindowsPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentCloudminiPlatformFilter = CloudminiPlatformFilter.Windows;
+            RebuildCloudminiPreview();
+        }
+
+        private void CloudminiLinuxPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentCloudminiPlatformFilter = CloudminiPlatformFilter.Linux;
+            RebuildCloudminiPreview();
+        }
+
+        private void SyncSelectedCloudminiButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            ApplyCloudminiSync(onlySelected: true);
+        }
+
+        private void SyncAllCloudminiButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            foreach (var item in _cloudminiPreviewItems)
+            {
+                item.IsSelected = true;
+            }
+
+            ApplyCloudminiSync(onlySelected: false);
+        }
+
+        private void SaveSettingsButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _settings.KeepLocalHostName = SettingsKeepLocalHostNameCheckBox.IsChecked == true;
+            _settings.OverwritePasswordFromProvider = SettingsOverwritePasswordCheckBox.IsChecked == true;
+            _settings.ImportOnlyOnline = SettingsImportOnlyOnlineCheckBox.IsChecked == true;
+
+            KeepLocalHostNameCheckBox.IsChecked = _settings.KeepLocalHostName;
+            OverwritePasswordCheckBox.IsChecked = _settings.OverwritePasswordFromProvider;
+            ImportOnlyOnlineCheckBox.IsChecked = _settings.ImportOnlyOnline;
+
+            SettingsStorage.SaveCloudminiToken(_settings, CloudminiTokenPasswordBox.Password, RememberCloudminiTokenCheckBox.IsChecked == true);
+            SettingsStorage.Save(_settings);
+            UpdateSettingsSummary();
+            RebuildCloudminiPreview();
+            MessageBox.Show(this, "Settings saved.", "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ClearSavedTokenButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _settings.RememberCloudminiToken = false;
+            _settings.EncryptedCloudminiToken = null;
+            SettingsStorage.Save(_settings);
+
+            RememberCloudminiTokenCheckBox.IsChecked = false;
+            CloudminiTokenPasswordBox.Password = string.Empty;
+            _sessionCloudminiToken = string.Empty;
+
+            UpdateSettingsSummary();
+            MessageBox.Show(this, "Saved Cloudmini token cleared.", "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void BackToConnectionsButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            SetNavigationFilter(NavigationFilter.AllConnections);
         }
 
         private void RowConnectButton_OnClick(object sender, RoutedEventArgs e)
@@ -218,16 +420,13 @@ namespace RdpManager
             DeleteEntry(entry);
         }
 
-        private void EntriesGrid_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            if (EntriesGrid.SelectedItem is RdpEntry)
-            {
-                ConnectCurrentEntry();
-            }
-        }
-
         private void EntriesGrid_OnSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
+            if (_isRebuildingEntriesPage)
+            {
+                return;
+            }
+
             var selected = EntriesGrid.SelectedItem as RdpEntry;
             if (selected == null)
             {
@@ -239,6 +438,31 @@ namespace RdpManager
             _editingEntry = selected;
             _isCreatingNew = false;
             PopulateForm(selected);
+            UpdateSummary();
+        }
+
+        private void PreviousPageButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_currentEntriesPage <= 1)
+            {
+                return;
+            }
+
+            _currentEntriesPage--;
+            RebuildEntriesPage();
+            UpdateSummary();
+        }
+
+        private void NextPageButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var totalPages = GetTotalEntriesPages();
+            if (_currentEntriesPage >= totalPages)
+            {
+                return;
+            }
+
+            _currentEntriesPage++;
+            RebuildEntriesPage();
             UpdateSummary();
         }
 
@@ -283,7 +507,21 @@ namespace RdpManager
 
         private void SearchTextBox_OnTextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
+            _currentEntriesPage = 1;
             RefreshEntriesView();
+        }
+
+        private void CopyValueTextBlock_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            var element = sender as FrameworkElement;
+            var value = element == null ? null : element.Tag as string;
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            Clipboard.SetText(value);
+            e.Handled = true;
         }
 
         private void PasswordBox_OnPasswordChanged(object sender, RoutedEventArgs e)
@@ -317,7 +555,6 @@ namespace RdpManager
                 entry = new RdpEntry();
                 _entries.Add(entry);
                 _editingEntry = entry;
-                EntriesGrid.SelectedItem = entry;
             }
 
             entry.HostName = hostName;
@@ -330,6 +567,7 @@ namespace RdpManager
             _editorDirty = false;
             MarkDirty();
             RefreshEntriesView();
+            NavigateToEntry(entry);
 
             return entry;
         }
@@ -363,17 +601,42 @@ namespace RdpManager
             UpdateSummary();
         }
 
+        private void ApplySettingsToUi()
+        {
+            if (_settings == null)
+            {
+                _settings = new AppSettings();
+            }
+
+            var savedToken = SettingsStorage.LoadCloudminiToken(_settings);
+            _sessionCloudminiToken = savedToken;
+
+            RememberCloudminiTokenCheckBox.IsChecked = _settings.RememberCloudminiToken;
+            CloudminiTokenPasswordBox.Password = savedToken;
+
+            KeepLocalHostNameCheckBox.IsChecked = _settings.KeepLocalHostName;
+            OverwritePasswordCheckBox.IsChecked = _settings.OverwritePasswordFromProvider;
+            ImportOnlyOnlineCheckBox.IsChecked = _settings.ImportOnlyOnline;
+
+            SettingsKeepLocalHostNameCheckBox.IsChecked = _settings.KeepLocalHostName;
+            SettingsOverwritePasswordCheckBox.IsChecked = _settings.OverwritePasswordFromProvider;
+            SettingsImportOnlyOnlineCheckBox.IsChecked = _settings.ImportOnlyOnline;
+
+            UpdateSettingsSummary();
+        }
+
         private void LoadEntries(string path)
         {
             _entries = CsvStorage.Load(path);
             MetadataStorage.Apply(path, _entries);
-            EntriesGrid.ItemsSource = _entries;
+            _currentEntriesPage = 1;
             ConfigureEntriesView();
             _currentFilePath = path;
             _isDirty = false;
             _isCreatingNew = true;
             StartNewEntry();
             UpdateWindowTitle();
+            UpdateSettingsSummary();
         }
 
         private void SaveEntries(string path)
@@ -456,9 +719,10 @@ namespace RdpManager
         private void UpdateWindowTitle()
         {
             var fileName = Path.GetFileName(_currentFilePath);
+            var versionTag = GetDisplayVersion();
             Title = _isDirty
-                ? string.Format("RDP Manager - {0} *", fileName)
-                : string.Format("RDP Manager - {0}", fileName);
+                ? string.Format("RDP Manager {0} - {1} *", versionTag, fileName)
+                : string.Format("RDP Manager {0} - {1}", versionTag, fileName);
         }
 
         private static string NormalizePort(string rawPort)
@@ -491,17 +755,19 @@ namespace RdpManager
         private RdpEntry ResolveEntryForConnection()
         {
             var selected = EntriesGrid.SelectedItem as RdpEntry;
-            if (!_editorDirty)
+            if (selected != null)
             {
-                if (selected == null && HasMeaningfulFormInput())
-                {
-                    return ApplyEditorToCollection();
-                }
-
-                return selected ?? _editingEntry;
+                return selected;
             }
 
-            return ApplyEditorToCollection();
+            if (_editorDirty || _isCreatingNew)
+            {
+                return HasMeaningfulFormInput() ? ApplyEditorToCollection() : null;
+            }
+
+            return _editingEntry != null && _pagedEntries.Contains(_editingEntry)
+                ? _editingEntry
+                : null;
         }
 
         private static string GetEntryDisplayName(RdpEntry entry)
@@ -523,12 +789,14 @@ namespace RdpManager
             }
 
             ApplyViewState();
+            RebuildEntriesPage();
             UpdateSummary();
         }
 
         private void RefreshEntriesView()
         {
             ApplyViewState();
+            RebuildEntriesPage();
             UpdateSummary();
         }
 
@@ -543,10 +811,11 @@ namespace RdpManager
             var query = SearchTextBox == null ? string.Empty : (SearchTextBox.Text ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(query))
             {
-                return MatchesNavigationFilter(entry);
+                return MatchesNavigationFilter(entry) && MatchesConnectionsPlatformFilter(entry);
             }
 
             return MatchesNavigationFilter(entry) &&
+                   MatchesConnectionsPlatformFilter(entry) &&
                    (ContainsIgnoreCase(entry.HostName, query) ||
                     ContainsIgnoreCase(entry.Host, query) ||
                     ContainsIgnoreCase(entry.User, query));
@@ -555,8 +824,17 @@ namespace RdpManager
         private void UpdateSummary()
         {
             UpdateNavigationVisuals();
-            UpdateFavoriteButtonState();
-            UpdateEmptyState();
+            UpdateViewState();
+            UpdateFilterButtonVisuals();
+
+            if (_currentAppSection == AppSection.Connections)
+            {
+                UpdateFavoriteButtonState();
+                UpdateEmptyState();
+            }
+
+            UpdateCloudminiEmptyState();
+            UpdateSettingsSummary();
         }
 
         private static bool ContainsIgnoreCase(string value, string query)
@@ -638,10 +916,46 @@ namespace RdpManager
             return button == null ? null : button.Tag as RdpEntry;
         }
 
+        private void SetAppSection(AppSection section)
+        {
+            _currentAppSection = section;
+            UpdateSummary();
+        }
+
         private void SetNavigationFilter(NavigationFilter filter)
         {
+            _currentAppSection = AppSection.Connections;
             _currentNavigationFilter = filter;
+            _currentEntriesPage = 1;
             RefreshEntriesView();
+        }
+
+        private void UpdateViewState()
+        {
+            if (ConnectionsView != null)
+            {
+                ConnectionsView.Visibility = _currentAppSection == AppSection.Connections ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (CloudminiView != null)
+            {
+                CloudminiView.Visibility = _currentAppSection == AppSection.CloudminiSync ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (SettingsView != null)
+            {
+                SettingsView.Visibility = _currentAppSection == AppSection.Settings ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (SearchTextBox != null)
+            {
+                SearchTextBox.Visibility = _currentAppSection == AppSection.Connections ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (ConnectionsActionsPanel != null)
+            {
+                ConnectionsActionsPanel.Visibility = _currentAppSection == AppSection.Connections ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
 
         private void ApplyViewState()
@@ -675,9 +989,11 @@ namespace RdpManager
 
         private void UpdateNavigationVisuals()
         {
-            SetNavigationVisual(AllConnectionsNavButton, AllConnectionsNavIcon, AllConnectionsNavText, _currentNavigationFilter == NavigationFilter.AllConnections);
-            SetNavigationVisual(FavoritesNavButton, FavoritesNavIcon, FavoritesNavText, _currentNavigationFilter == NavigationFilter.Favorites);
-            SetNavigationVisual(RecentNavButton, RecentNavIcon, RecentNavText, _currentNavigationFilter == NavigationFilter.Recent);
+            SetNavigationVisual(AllConnectionsNavButton, AllConnectionsNavIcon, AllConnectionsNavText, _currentAppSection == AppSection.Connections && _currentNavigationFilter == NavigationFilter.AllConnections);
+            SetNavigationVisual(FavoritesNavButton, FavoritesNavIcon, FavoritesNavText, _currentAppSection == AppSection.Connections && _currentNavigationFilter == NavigationFilter.Favorites);
+            SetNavigationVisual(RecentNavButton, RecentNavIcon, RecentNavText, _currentAppSection == AppSection.Connections && _currentNavigationFilter == NavigationFilter.Recent);
+            SetNavigationVisual(CloudminiSyncNavButton, CloudminiSyncNavIcon, CloudminiSyncNavText, _currentAppSection == AppSection.CloudminiSync);
+            SetNavigationVisual(SettingsNavButton, SettingsNavIcon, SettingsNavText, _currentAppSection == AppSection.Settings);
         }
 
         private void SetNavigationVisual(Control control, TextBlock icon, TextBlock label, bool isActive)
@@ -710,14 +1026,7 @@ namespace RdpManager
                 return;
             }
 
-            var hasVisibleItems = false;
-            foreach (var item in _entriesView)
-            {
-                hasVisibleItems = true;
-                break;
-            }
-
-            if (hasVisibleItems)
+            if (_filteredEntriesCount > 0)
             {
                 EmptyStateTextBlock.Visibility = Visibility.Collapsed;
                 return;
@@ -726,17 +1035,440 @@ namespace RdpManager
             switch (_currentNavigationFilter)
             {
                 case NavigationFilter.Favorites:
-                    EmptyStateTextBlock.Text = "No favorite connections yet. Select an entry and click the star in Entry editor.";
+                    EmptyStateTextBlock.Text = _currentConnectionsPlatformFilter == CloudminiPlatformFilter.All
+                        ? "No favorite connections yet. Select an entry and click the star in Entry editor."
+                        : string.Format("No {0} favorite connections match the current filter.", GetPlatformFilterLabel(_currentConnectionsPlatformFilter));
                     break;
                 case NavigationFilter.Recent:
-                    EmptyStateTextBlock.Text = "No recent connections yet. Launch an RDP session once and it will appear here.";
+                    EmptyStateTextBlock.Text = _currentConnectionsPlatformFilter == CloudminiPlatformFilter.All
+                        ? "No recent connections yet. Launch an RDP session once and it will appear here."
+                        : string.Format("No {0} recent connections match the current filter.", GetPlatformFilterLabel(_currentConnectionsPlatformFilter));
                     break;
                 default:
-                    EmptyStateTextBlock.Text = "No connections found. Add a new entry or open another CSV file.";
+                    EmptyStateTextBlock.Text = _currentConnectionsPlatformFilter == CloudminiPlatformFilter.All
+                        ? "No connections found. Add a new entry or open another CSV file."
+                        : string.Format("No {0} connections match the current filter.", GetPlatformFilterLabel(_currentConnectionsPlatformFilter));
                     break;
             }
 
             EmptyStateTextBlock.Visibility = Visibility.Visible;
+        }
+
+        private void UpdateCloudminiEmptyState()
+        {
+            if (CloudminiEmptyStateTextBlock == null)
+            {
+                return;
+            }
+
+            if (_currentAppSection != AppSection.CloudminiSync)
+            {
+                CloudminiEmptyStateTextBlock.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (_cloudminiPreviewItems.Count == 0)
+            {
+                switch (_currentCloudminiPlatformFilter)
+                {
+                    case CloudminiPlatformFilter.Windows:
+                        CloudminiEmptyStateTextBlock.Text = "No Windows VPS match the current filter.";
+                        break;
+                    case CloudminiPlatformFilter.Linux:
+                        CloudminiEmptyStateTextBlock.Text = "No Linux VPS match the current filter.";
+                        break;
+                    default:
+                        CloudminiEmptyStateTextBlock.Text = "No Cloudmini VPS loaded yet.";
+                        break;
+                }
+
+                CloudminiEmptyStateTextBlock.Visibility = Visibility.Visible;
+                return;
+            }
+
+            CloudminiEmptyStateTextBlock.Visibility = Visibility.Collapsed;
+        }
+
+        private bool MatchesConnectionsPlatformFilter(RdpEntry entry)
+        {
+            if (entry == null)
+            {
+                return false;
+            }
+
+            var isLinux = string.Equals((entry.Port ?? string.Empty).Trim(), "22", StringComparison.OrdinalIgnoreCase);
+            switch (_currentConnectionsPlatformFilter)
+            {
+                case CloudminiPlatformFilter.Windows:
+                    return !isLinux;
+                case CloudminiPlatformFilter.Linux:
+                    return isLinux;
+                default:
+                    return true;
+            }
+        }
+
+        private void SyncCloudminiOptionStateToSettings()
+        {
+            if (_settings == null)
+            {
+                _settings = new AppSettings();
+            }
+
+            _settings.KeepLocalHostName = KeepLocalHostNameCheckBox.IsChecked == true;
+            _settings.OverwritePasswordFromProvider = OverwritePasswordCheckBox.IsChecked == true;
+            _settings.ImportOnlyOnline = ImportOnlyOnlineCheckBox.IsChecked == true;
+
+            if (SettingsKeepLocalHostNameCheckBox != null)
+            {
+                SettingsKeepLocalHostNameCheckBox.IsChecked = _settings.KeepLocalHostName;
+            }
+
+            if (SettingsOverwritePasswordCheckBox != null)
+            {
+                SettingsOverwritePasswordCheckBox.IsChecked = _settings.OverwritePasswordFromProvider;
+            }
+
+            if (SettingsImportOnlyOnlineCheckBox != null)
+            {
+                SettingsImportOnlyOnlineCheckBox.IsChecked = _settings.ImportOnlyOnline;
+            }
+        }
+
+        private CloudminiSyncOptions BuildCurrentSyncOptions()
+        {
+            return new CloudminiSyncOptions
+            {
+                KeepLocalHostName = KeepLocalHostNameCheckBox.IsChecked == true,
+                OverwritePasswordFromProvider = OverwritePasswordCheckBox.IsChecked == true,
+                ImportOnlyOnline = ImportOnlyOnlineCheckBox.IsChecked == true
+            };
+        }
+
+        private void RebuildCloudminiPreview()
+        {
+            if (_cloudminiRemoteItems.Count == 0)
+            {
+                _cloudminiPreviewItems.Clear();
+                UpdateCloudminiEmptyState();
+                return;
+            }
+
+            var filteredRemoteItems = _cloudminiRemoteItems.Where(MatchesCloudminiPlatformFilter).ToList();
+            var preview = CloudminiSyncService.BuildPreview(_entries, filteredRemoteItems, BuildCurrentSyncOptions());
+            _cloudminiPreviewItems.Clear();
+            foreach (var item in preview)
+            {
+                _cloudminiPreviewItems.Add(item);
+            }
+
+            UpdateCloudminiEmptyState();
+        }
+
+        private bool MatchesCloudminiPlatformFilter(CloudminiVps remote)
+        {
+            if (remote == null)
+            {
+                return false;
+            }
+
+            var isLinux = string.Equals((remote.Port ?? string.Empty).Trim(), "22", StringComparison.OrdinalIgnoreCase);
+            switch (_currentCloudminiPlatformFilter)
+            {
+                case CloudminiPlatformFilter.Windows:
+                    return !isLinux;
+                case CloudminiPlatformFilter.Linux:
+                    return isLinux;
+                default:
+                    return true;
+            }
+        }
+
+        private void UpdateFilterButtonVisuals()
+        {
+            SetFilterButtonVisual(ConnectionsAllPlatformFilterButton, _currentConnectionsPlatformFilter == CloudminiPlatformFilter.All);
+            SetFilterButtonVisual(ConnectionsWindowsPlatformFilterButton, _currentConnectionsPlatformFilter == CloudminiPlatformFilter.Windows);
+            SetFilterButtonVisual(ConnectionsLinuxPlatformFilterButton, _currentConnectionsPlatformFilter == CloudminiPlatformFilter.Linux);
+
+            SetFilterButtonVisual(CloudminiAllPlatformFilterButton, _currentCloudminiPlatformFilter == CloudminiPlatformFilter.All);
+            SetFilterButtonVisual(CloudminiWindowsPlatformFilterButton, _currentCloudminiPlatformFilter == CloudminiPlatformFilter.Windows);
+            SetFilterButtonVisual(CloudminiLinuxPlatformFilterButton, _currentCloudminiPlatformFilter == CloudminiPlatformFilter.Linux);
+        }
+
+        private void SetFilterButtonVisual(Button button, bool isActive)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.Background = isActive
+                ? (Brush)(FindResource("AccentSoftBrush") as Brush ?? Brushes.LightBlue)
+                : (Brush)(FindResource("SurfaceBrush") as Brush ?? Brushes.White);
+            button.BorderBrush = isActive
+                ? (Brush)(FindResource("AccentSoftBorderBrush") as Brush ?? Brushes.DodgerBlue)
+                : (Brush)(FindResource("CardBorderBrush") as Brush ?? Brushes.LightGray);
+            button.Foreground = isActive
+                ? (Brush)(FindResource("AccentBrush") as Brush ?? Brushes.DodgerBlue)
+                : (Brush)(FindResource("TextPrimaryBrush") as Brush ?? Brushes.Black);
+        }
+
+        private static string GetPlatformFilterLabel(CloudminiPlatformFilter filter)
+        {
+            switch (filter)
+            {
+                case CloudminiPlatformFilter.Windows:
+                    return "Windows";
+                case CloudminiPlatformFilter.Linux:
+                    return "Linux";
+                default:
+                    return "All";
+            }
+        }
+
+        private void RebuildEntriesPage()
+        {
+            if (_entriesView == null)
+            {
+                _filteredEntriesCount = 0;
+                _pagedEntries.Clear();
+                UpdateEntriesPaginationControls();
+                return;
+            }
+
+            var filteredEntries = _entriesView.Cast<RdpEntry>().ToList();
+            _filteredEntriesCount = filteredEntries.Count;
+
+            var totalPages = GetTotalEntriesPages();
+            if (_currentEntriesPage > totalPages)
+            {
+                _currentEntriesPage = totalPages;
+            }
+
+            if (_currentEntriesPage < 1)
+            {
+                _currentEntriesPage = 1;
+            }
+
+            var currentSelection = EntriesGrid == null ? null : EntriesGrid.SelectedItem as RdpEntry;
+            var pageEntries = filteredEntries
+                .Skip((_currentEntriesPage - 1) * EntriesPageSize)
+                .Take(EntriesPageSize)
+                .ToList();
+
+            _isRebuildingEntriesPage = true;
+            try
+            {
+                _pagedEntries.Clear();
+                foreach (var entry in pageEntries)
+                {
+                    _pagedEntries.Add(entry);
+                }
+
+                if (EntriesGrid != null)
+                {
+                    if (currentSelection != null && pageEntries.Contains(currentSelection))
+                    {
+                        EntriesGrid.SelectedItem = currentSelection;
+                    }
+                    else if (_editingEntry != null && !_isCreatingNew && pageEntries.Contains(_editingEntry))
+                    {
+                        EntriesGrid.SelectedItem = _editingEntry;
+                    }
+                    else
+                    {
+                        EntriesGrid.SelectedItem = null;
+                    }
+                }
+            }
+            finally
+            {
+                _isRebuildingEntriesPage = false;
+            }
+
+            UpdateEntriesPaginationControls();
+        }
+
+        private void UpdateEntriesPaginationControls()
+        {
+            if (PageInfoTextBlock == null || PageCountSummaryTextBlock == null || PreviousPageButton == null || NextPageButton == null)
+            {
+                return;
+            }
+
+            var totalPages = GetTotalEntriesPages();
+            PageInfoTextBlock.Text = string.Format("Page {0} / {1}", totalPages == 0 ? 1 : _currentEntriesPage, totalPages);
+            PageCountSummaryTextBlock.Text = _filteredEntriesCount == 1
+                ? "1 item"
+                : string.Format("{0} items", _filteredEntriesCount);
+
+            PreviousPageButton.IsEnabled = totalPages > 1 && _currentEntriesPage > 1;
+            NextPageButton.IsEnabled = totalPages > 1 && _currentEntriesPage < totalPages;
+        }
+
+        private int GetTotalEntriesPages()
+        {
+            return Math.Max(1, (int)Math.Ceiling(_filteredEntriesCount / (double)EntriesPageSize));
+        }
+
+        private void NavigateToEntry(RdpEntry entry)
+        {
+            if (entry == null || _entriesView == null)
+            {
+                return;
+            }
+
+            var filteredEntries = _entriesView.Cast<RdpEntry>().ToList();
+            var index = filteredEntries.IndexOf(entry);
+            if (index < 0)
+            {
+                return;
+            }
+
+            _currentEntriesPage = (index / EntriesPageSize) + 1;
+            RebuildEntriesPage();
+
+            if (EntriesGrid != null && _pagedEntries.Contains(entry))
+            {
+                EntriesGrid.SelectedItem = entry;
+                EntriesGrid.ScrollIntoView(entry);
+            }
+        }
+
+        private void ApplyCloudminiSync(bool onlySelected)
+        {
+            if (_cloudminiPreviewItems.Count == 0)
+            {
+                MessageBox.Show(this, "Fetch Cloudmini VPS first.", "Cloudmini Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (onlySelected && !_cloudminiPreviewItems.Any(item => item.IsSelected))
+            {
+                MessageBox.Show(this, "Select at least one VPS to sync.", "Cloudmini Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                var result = CloudminiSyncService.ApplySync(_entries, _cloudminiPreviewItems, BuildCurrentSyncOptions());
+
+                _settings.LastCloudminiSyncUtc = DateTime.UtcNow;
+                _settings.LastCloudminiSyncSummary = string.Format(
+                    "Created {0}, updated {1}, skipped {2}, conflicts {3}",
+                    result.CreatedCount,
+                    result.UpdatedCount,
+                    result.SkippedCount,
+                    result.ConflictCount);
+                SettingsStorage.SaveCloudminiToken(_settings, CloudminiTokenPasswordBox.Password, RememberCloudminiTokenCheckBox.IsChecked == true);
+                SettingsStorage.Save(_settings);
+
+                MarkDirty();
+                RefreshEntriesView();
+                RebuildCloudminiPreview();
+                UpdateSettingsSummary();
+                CloudminiStatusTextBlock.Text = _settings.LastCloudminiSyncSummary;
+
+                MessageBox.Show(
+                    this,
+                    string.Format(
+                        "Cloudmini sync completed.\nCreated: {0}\nUpdated: {1}\nSkipped: {2}\nConflicts: {3}",
+                        result.CreatedCount,
+                        result.UpdatedCount,
+                        result.SkippedCount,
+                        result.ConflictCount),
+                    "Cloudmini Sync",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private string GetCloudminiToken()
+        {
+            var token = (CloudminiTokenPasswordBox.Password ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                token = (_sessionCloudminiToken ?? string.Empty).Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                throw new InvalidOperationException("Cloudmini token cannot be empty.");
+            }
+
+            return token;
+        }
+
+        private void UpdateSettingsSummary()
+        {
+            if (CurrentCsvPathTextBlock == null || SettingsPathTextBlock == null || SavedTokenStatusTextBlock == null || CloudminiLastSyncTextBlock == null)
+            {
+                return;
+            }
+
+            CurrentCsvPathTextBlock.Text = "CSV: " + (_currentFilePath ?? "-");
+            SettingsPathTextBlock.Text = "Settings: " + SettingsStorage.GetSettingsPath();
+            SavedTokenStatusTextBlock.Text = _settings != null && _settings.RememberCloudminiToken && !string.IsNullOrWhiteSpace(_settings.EncryptedCloudminiToken)
+                ? "Saved token: stored for current Windows user"
+                : "Saved token: not stored";
+            if (AppVersionTextBlock != null)
+            {
+                AppVersionTextBlock.Text = "Version: " + GetDisplayVersion();
+            }
+
+            if (_settings != null && _settings.LastCloudminiSyncUtc.HasValue)
+            {
+                CloudminiLastSyncTextBlock.Text = string.Format(
+                    "Last sync: {0} ({1})",
+                    _settings.LastCloudminiSyncUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+                    _settings.LastCloudminiSyncSummary ?? "completed");
+            }
+            else
+            {
+                CloudminiLastSyncTextBlock.Text = "Last sync: never";
+            }
+        }
+
+        private void UpdateVersionText()
+        {
+            var versionText = GetDisplayVersion();
+            if (VersionTagTextBlock != null)
+            {
+                VersionTagTextBlock.Text = versionText;
+            }
+
+            if (AppVersionTextBlock != null)
+            {
+                AppVersionTextBlock.Text = "Version: " + versionText;
+            }
+        }
+
+        private static string GetDisplayVersion()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var informationalVersion = assembly
+                .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)
+                .OfType<AssemblyInformationalVersionAttribute>()
+                .Select(attribute => attribute.InformationalVersion)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(informationalVersion))
+            {
+                return "v" + informationalVersion;
+            }
+
+            var version = assembly.GetName().Version;
+            if (version == null)
+            {
+                return "v0.0.0";
+            }
+
+            return string.Format("v{0}.{1}.{2}", version.Major, version.Minor, version.Build);
         }
 
         private void UpdateFavoriteButtonState()

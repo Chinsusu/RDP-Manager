@@ -49,6 +49,7 @@ Neu la list tab, main content chia thanh:
 
 - Left/center: list area
 - Right: detail/editor area
+- Card list va card editor phai cao bang nhau trong viewport chinh, khong dung scroll toan trang de lo noi dung chinh.
 
 Neu la workflow tab, main content chia thanh:
 
@@ -81,5 +82,7 @@ De de them bot sua tab:
 
 - Sidebar chi chua navigation va quick actions
 - List tab phai co search box
+- List tab nen co filter chip ro rang thay vi dropdown khi chi co it lua chon
+- List tab co nhieu item phai uu tien pagination hon la keo dai card
 - Button destructive phai co style do nhat quan
 - Nguon du lieu external phai co nhan provider/source

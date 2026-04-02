@@ -21,11 +21,27 @@ namespace RdpManager.Services
                 {
                     entry.IsFavorite = false;
                     entry.LastConnectedUtc = null;
+                    entry.SourceProvider = null;
+                    entry.SourceId = null;
+                    entry.SourceStatus = null;
+                    entry.SourceLocation = null;
+                    entry.SourceCreatedAtUtc = null;
+                    entry.SourceExpiredAtUtc = null;
+                    entry.LastSyncedUtc = null;
+                    entry.IsProviderManaged = false;
                     continue;
                 }
 
                 entry.IsFavorite = metadata.IsFavorite;
                 entry.LastConnectedUtc = metadata.GetLastConnectedUtc();
+                entry.SourceProvider = metadata.SourceProvider;
+                entry.SourceId = metadata.SourceId;
+                entry.SourceStatus = metadata.SourceStatus;
+                entry.SourceLocation = metadata.SourceLocation;
+                entry.SourceCreatedAtUtc = metadata.GetSourceCreatedAtUtc();
+                entry.SourceExpiredAtUtc = metadata.GetSourceExpiredAtUtc();
+                entry.LastSyncedUtc = metadata.GetLastSyncedUtc();
+                entry.IsProviderManaged = metadata.IsProviderManaged;
             }
         }
 
@@ -35,14 +51,28 @@ namespace RdpManager.Services
             var document = new MetadataDocument
             {
                 Entries = entries
-                    .Where(entry => entry.IsFavorite || entry.LastConnectedUtc.HasValue)
+                    .Where(entry =>
+                        entry.IsFavorite ||
+                        entry.LastConnectedUtc.HasValue ||
+                        entry.IsProviderManaged ||
+                        !string.IsNullOrWhiteSpace(entry.SourceProvider) ||
+                        !string.IsNullOrWhiteSpace(entry.SourceId) ||
+                        entry.LastSyncedUtc.HasValue)
                     .Select(entry => new EntryMetadata
                     {
                         Key = GetKey(entry),
                         IsFavorite = entry.IsFavorite,
                         LastConnectedUtc = entry.LastConnectedUtc.HasValue
                             ? entry.LastConnectedUtc.Value.ToString("o")
-                            : null
+                            : null,
+                        SourceProvider = entry.SourceProvider,
+                        SourceId = entry.SourceId,
+                        SourceStatus = entry.SourceStatus,
+                        SourceLocation = entry.SourceLocation,
+                        SourceCreatedAtUtc = entry.SourceCreatedAtUtc.HasValue ? entry.SourceCreatedAtUtc.Value.ToString("o") : null,
+                        SourceExpiredAtUtc = entry.SourceExpiredAtUtc.HasValue ? entry.SourceExpiredAtUtc.Value.ToString("o") : null,
+                        LastSyncedUtc = entry.LastSyncedUtc.HasValue ? entry.LastSyncedUtc.Value.ToString("o") : null,
+                        IsProviderManaged = entry.IsProviderManaged
                     })
                     .ToList()
             };
@@ -123,12 +153,54 @@ namespace RdpManager.Services
 
         public string LastConnectedUtc { get; set; }
 
+        public string SourceProvider { get; set; }
+
+        public string SourceId { get; set; }
+
+        public string SourceStatus { get; set; }
+
+        public string SourceLocation { get; set; }
+
+        public string SourceCreatedAtUtc { get; set; }
+
+        public string SourceExpiredAtUtc { get; set; }
+
+        public string LastSyncedUtc { get; set; }
+
+        public bool IsProviderManaged { get; set; }
+
         public DateTime? GetLastConnectedUtc()
         {
             DateTime value;
             if (DateTime.TryParse(LastConnectedUtc, null, System.Globalization.DateTimeStyles.RoundtripKind, out value))
             {
                 return value;
+            }
+
+            return null;
+        }
+
+        public DateTime? GetSourceCreatedAtUtc()
+        {
+            return ParseDate(SourceCreatedAtUtc);
+        }
+
+        public DateTime? GetSourceExpiredAtUtc()
+        {
+            return ParseDate(SourceExpiredAtUtc);
+        }
+
+        public DateTime? GetLastSyncedUtc()
+        {
+            return ParseDate(LastSyncedUtc);
+        }
+
+        private static DateTime? ParseDate(string value)
+        {
+            DateTime parsed;
+            if (DateTime.TryParse(value, null, System.Globalization.DateTimeStyles.RoundtripKind, out parsed))
+            {
+                return parsed;
             }
 
             return null;

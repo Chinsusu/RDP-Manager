@@ -15,10 +15,12 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 
 - Header:
   - Title: `Saved connections`
-  - Subtitle: mo ta ngan
+  - Subtitle: huong dan copy va connect ro rang
 - Main list area:
-  - Search box
+  - Search box o sidebar
+  - Platform filter chips: `All`, `Windows`, `Linux`
   - Data grid / list grid
+  - Pagination footer, mac dinh `10 items/page`
   - Row actions: Connect, Edit, Delete
 - Right panel:
   - Entry editor
@@ -29,7 +31,9 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 ## Main components
 
 - Search input
+- Platform filter chips
 - Connections grid
+- Pagination controls
 - Entry editor
 - Global quick actions
 
@@ -47,6 +51,14 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Connect
 - Edit
 - Delete
+
+## Direct row interactions
+
+- Click `Host` -> copy host vao clipboard
+- Click `User` -> copy user vao clipboard
+- Click `Password` -> copy password thuc vao clipboard
+- Double-click row khong duoc phep auto launch RDP
+- Chi nut `Connect` o row hoac `Connect selected` moi duoc mo session
 
 ## Validation rules
 
@@ -83,3 +95,6 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Search phan hoi theo text nhap.
 - Connect row khong phu thuoc vao editor state sai.
 - Create mode va edit mode phai tach ro rang.
+- Local list khong lam cao vo han theo so item; phai giu trong viewport bang pagination.
+- `Host`, `User`, `Password` co the copy bang 1 click.
+- Ket noi RDP chi xay ra khi user bam `Connect`.
