@@ -11,6 +11,12 @@ namespace RdpManager.Services
     {
         public static void Apply(string csvPath, IEnumerable<RdpEntry> entries)
         {
+            if (SqliteStorage.GetDatabasePath().Equals(csvPath, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Path.GetExtension(csvPath), ".db", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             var document = LoadDocument(GetMetadataPath(csvPath));
             var map = document.Entries.ToDictionary(entry => entry.Key, StringComparer.OrdinalIgnoreCase);
 
@@ -65,6 +71,13 @@ namespace RdpManager.Services
 
         public static void Save(string csvPath, IEnumerable<RdpEntry> entries)
         {
+            if (SqliteStorage.GetDatabasePath().Equals(csvPath, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Path.GetExtension(csvPath), ".db", StringComparison.OrdinalIgnoreCase))
+            {
+                SqliteStorage.SaveConnections(csvPath, entries);
+                return;
+            }
+
             var path = GetMetadataPath(csvPath);
             var document = new MetadataDocument
             {

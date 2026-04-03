@@ -6,6 +6,7 @@ Project hien tai la WPF app nho, logic phan lon nam trong `MainWindow.xaml.cs`, 
 
 - `CsvStorage`
 - `MetadataStorage`
+- `SqliteStorage`
 - `RdpLauncher`
 - `CloudminiClient`
 - `CloudminiSyncService`
@@ -23,6 +24,7 @@ Trang thai thuc te hien tai:
 - UI da co nhieu state hon truoc: local filter, cloud filter, pagination, sync preview, token settings.
 - `MainWindow.xaml.cs` hien dang ganh ca coordination logic UI va workflow logic, day la diem can tach tiep trong buoc hardening.
 - `SSH Tunnel` milestone 2 da duoc noi vao connect flow, nhung van chua tach khoi code-behind theo huong MVVM-lite.
+- Runtime storage da chuyen sang `SQLite`; `CSV` va `XML` legacy files duoc giu de import/export va migration compatibility.
 
 ## Target architecture for Phase 2+
 
@@ -60,8 +62,8 @@ RdpManager/
 
 ## Storage services
 
+- `ISqliteStorage`
 - `ICsvStorage`
-- `IMetadataStorage`
 - `ISettingsStorage`
 - `IJumpHostProfileStorage`
 - `ISecretVault`
@@ -107,7 +109,7 @@ Cloudmini data khong bind truc tiep vao local list. Phai di qua merge service.
 
 ## Decision 3
 
-Provider metadata luu trong metadata/settings layer, khong nhan het vao CSV.
+Provider metadata va local metadata luu trong `SQLite`, khong nhan het vao CSV.
 
 ## Decision 4
 
@@ -139,6 +141,8 @@ Trang thai implemented hien tai:
 - `SshTunnelManager` dang giu lifecycle tunnel + cleanup
 - `TempKeyMaterializer` dang materialize private key tam thoi
 - `SecretVault` dang luu auth material bang protected storage
+- `SqliteStorage` dang giu schema `connections` va `proxy_profiles`
+- `JumpHostProfileStorage` da duoc re-route sang DB thay vi XML runtime store
 
 ## Decision 6
 
@@ -157,6 +161,25 @@ Reasons:
 - App UI khong duoc show lai raw secret sau khi da save
 - Neu sau nay co broker cap short-lived credential, `SshTunnelManager` phai goi qua abstraction thay vi doc secret truc tiep tu UI
 - V1 khong nen dua vao SSH password prompt trong runtime connect flow
+
+## Data storage decision
+
+- Runtime source of truth:
+  - `%AppData%\\RdpManager\\rdp-manager.db`
+- Legacy compatibility:
+  - `clients.csv`
+  - `clients.meta.xml`
+  - `%AppData%\\RdpManager\\jump-hosts.user.xml`
+- Secrets va settings van tach khoi DB de giam rui ro migration:
+  - `%AppData%\\RdpManager\\settings.user.xml`
+  - `%AppData%\\RdpManager\\secrets.user.xml`
+
+Ly do:
+
+- `SQLite` don gian hon nhieu file roi rac
+- phu hop local desktop app
+- de query/filter/sync hon khi so entry tang
+- khong buoc phai dat plain secret vao DB
 
 ## Logging architecture
 

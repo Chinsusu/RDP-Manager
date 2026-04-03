@@ -18,8 +18,9 @@ Dung 3 lop test:
 - Search theo Group / Tags / Notes
 - Favorite / unfavorite
 - Recent update sau connect
-- Save CSV
-- Open CSV khac
+- Save database
+- Import CSV khac
+- Export CSV snapshot
 - Health check selected
 - Health check current page
 
@@ -40,7 +41,8 @@ Dung 3 lop test:
 ## Regression checklist
 
 - Cloudmini loi khong duoc lam hong local list
-- Metadata file hong van phai load duoc CSV
+- DB rong + `clients.csv` ton tai thi app phai migrate len `SQLite` duoc
+- Import CSV khong duoc lam hong DB neu file metadata legacy bi hong
 - Jump host settings hong khong duoc chan flow `Direct`
 - Favorites/Recent van dung sau sync
 - Connect sau sync van mo duoc `mstsc`
@@ -55,48 +57,49 @@ Dung 3 lop test:
 
 ## SSH tunnel manual checklist
 
-- Tao jump host profile moi
-- Sua jump host profile
-- Xoa jump host profile
+- Tao proxy server profile moi
+- Sua proxy server profile
+- Xoa proxy server profile
 - Test SSH thanh cong
 - Test SSH that bai
-- Test SSH fail ro rang khi chua import key o `Embedded key`
-- Test SSH pass o `Agent` neu may co `ssh-agent` va identity hop le
 - Gan 1 profile cho nhieu `RdpEntry`
 - Connect 1 entry qua `SSH Tunnel`
 - Dong `mstsc` va verify tunnel duoc cleanup
 - `Direct` mode van connect dung sau khi co profile SSH
 - SSH secret khong nam trong CSV
 - App restart khong de tunnel zombie do app tao ra
+- Tunnel mode khong hien popup cert mismatch cua `mstsc`
 
 ## Release checklist
 
 1. Build Release thanh cong.
 2. Chay smoke test mo app.
-3. Verify `clients.csv` backward-compatible.
-4. Verify token storage khong nam trong CSV.
-5. Verify log folder create duoc.
-6. Cap nhat docs version neu doi scope lon.
-7. Neu co `SSH Tunnel`, verify startup cleanup va tunnel cleanup khi dong `mstsc`.
+3. Verify `SQLite` DB duoc tao duoi `%AppData%\\RdpManager\\rdp-manager.db`.
+4. Verify `clients.csv` backward-compatible.
+5. Verify token storage khong nam trong CSV.
+6. Verify log folder create duoc.
+7. Cap nhat docs version neu doi scope lon.
+8. Neu co `SSH Tunnel`, verify startup cleanup va tunnel cleanup khi dong `mstsc`.
 
 ## Support diagnostics
 
 Nen co:
 
 - app version
-- current csv path
-- current metadata path
+- current database path
+- current export path neu co
 - last sync time
 - last error message
 
 ## Backup and restore
 
-- Truoc sync bulk, co the tao backup `clients.<timestamp>.csv`
-- Metadata file cung duoc backup cung cap
-- Restore flow phai don gian: chon lai CSV cu
+- Truoc sync bulk, co the tao backup `connections.<timestamp>.csv`
+- Metadata export di cung backup CSV
+- Restore flow phai don gian: import lai CSV cu vao DB
 
 ## Operations note
 
 - App la desktop local-first tool
 - Neu provider API outage, local operations van phai tiep tuc
 - Sync duoc thiet ke la manual-first, khong auto scheduler trong phase 2
+- Runtime data nam trong SQLite; export CSV la snapshot/interop, khong con la source of truth

@@ -43,6 +43,10 @@
       <HintPath>packages\SSH.NET.2020.0.2\lib\net40\Renci.SshNet.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Data.SQLite">
+      <HintPath>packages\System.Data.SQLite.x64.1.0.119\lib\net40\System.Data.SQLite.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System">
       <Private>False</Private>
     </Reference>
@@ -119,6 +123,7 @@
     <Compile Include="Services\RdpLauncher.cs" />
     <Compile Include="Services\SecretVault.cs" />
     <Compile Include="Services\SshTunnelManager.cs" />
+    <Compile Include="Services\SqliteStorage.cs" />
     <Compile Include="Services\SettingsStorage.cs" />
     <Compile Include="Services\TempKeyMaterializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

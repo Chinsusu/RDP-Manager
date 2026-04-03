@@ -11,7 +11,11 @@ namespace RdpManager.Services
     {
         public static List<JumpHostProfile> Load()
         {
-            var path = GetProfilesPath();
+            return SqliteStorage.LoadProxyProfiles(SqliteStorage.GetDatabasePath());
+        }
+
+        public static List<JumpHostProfile> LoadLegacyXml(string path)
+        {
             if (!File.Exists(path))
             {
                 return new List<JumpHostProfile>();
@@ -23,7 +27,7 @@ namespace RdpManager.Services
                 using (var stream = File.OpenRead(path))
                 {
                     var document = serializer.Deserialize(stream) as JumpHostProfileDocument;
-                    return Normalize(document == null ? new List<JumpHostProfile>() : document.Profiles);
+                    return NormalizeProfiles(document == null ? new List<JumpHostProfile>() : document.Profiles);
                 }
             }
             catch
@@ -34,28 +38,22 @@ namespace RdpManager.Services
 
         public static void Save(IEnumerable<JumpHostProfile> profiles)
         {
-            SettingsStorage.EnsureApplicationDataDirectory();
-
-            var document = new JumpHostProfileDocument
-            {
-                Profiles = Normalize(profiles == null ? new List<JumpHostProfile>() : profiles.ToList())
-            };
-
-            var serializer = new XmlSerializer(typeof(JumpHostProfileDocument));
-            using (var stream = File.Create(GetProfilesPath()))
-            {
-                serializer.Serialize(stream, document);
-            }
+            SqliteStorage.SaveProxyProfiles(SqliteStorage.GetDatabasePath(), profiles);
         }
 
         public static string GetProfilesPath()
         {
+            return SqliteStorage.GetDatabasePath();
+        }
+
+        public static string GetLegacyProfilesPath()
+        {
             return Path.Combine(SettingsStorage.GetApplicationDataDirectory(), "jump-hosts.user.xml");
         }
 
-        private static List<JumpHostProfile> Normalize(IList<JumpHostProfile> profiles)
+        public static List<JumpHostProfile> NormalizeProfiles(IEnumerable<JumpHostProfile> profiles)
         {
-            return (profiles ?? new List<JumpHostProfile>())
+            return (profiles == null ? new List<JumpHostProfile>() : profiles.ToList())
                 .Where(profile => profile != null)
                 .Select(profile => new JumpHostProfile
                 {

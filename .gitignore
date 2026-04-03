@@ -18,3 +18,5 @@ credential.txt
 packages/*
 !packages/SSH.NET.2020.0.2/
 !packages/SSH.NET.2020.0.2/**
+!packages/System.Data.SQLite.x64.1.0.119/
+!packages/System.Data.SQLite.x64.1.0.119/**
