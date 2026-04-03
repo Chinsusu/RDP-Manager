@@ -37,6 +37,7 @@ namespace RdpManager
         private bool _editorDirty;
         private bool _isPopulatingForm;
         private bool _isRebuildingEntriesPage;
+        private bool _isUpdatingFilterSelectors;
         private bool _isUpdatingGroupFilter;
         private int _currentEntriesPage = 1;
         private int _filteredEntriesCount;
@@ -79,6 +80,7 @@ namespace RdpManager
         {
             base.OnSourceInitialized(e);
             ApplyWindowFrameTheme();
+            UpdateMaximizeRestoreButtonState();
         }
 
         private void OpenCsvButton_OnClick(object sender, RoutedEventArgs e)
@@ -275,51 +277,26 @@ namespace RdpManager
             RebuildCloudminiPreview();
         }
 
-        private void ConnectionsAllPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        private void ConnectionsPlatformFilterComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _currentConnectionsPlatformFilter = PlatformFilter.All;
+            if (_isUpdatingFilterSelectors)
+            {
+                return;
+            }
+
+            _currentConnectionsPlatformFilter = ParsePlatformFilter(GetSelectedComboTag(ConnectionsPlatformFilterComboBox));
             _currentEntriesPage = 1;
             RefreshEntriesView();
         }
 
-        private void ConnectionsWindowsPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        private void ConnectionsStatusFilterComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _currentConnectionsPlatformFilter = PlatformFilter.Windows;
-            _currentEntriesPage = 1;
-            RefreshEntriesView();
-        }
+            if (_isUpdatingFilterSelectors)
+            {
+                return;
+            }
 
-        private void ConnectionsLinuxPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentConnectionsPlatformFilter = PlatformFilter.Linux;
-            _currentEntriesPage = 1;
-            RefreshEntriesView();
-        }
-
-        private void ConnectionsAllStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentConnectionsStatusFilter = StatusFilter.All;
-            _currentEntriesPage = 1;
-            RefreshEntriesView();
-        }
-
-        private void ConnectionsOnlineStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentConnectionsStatusFilter = StatusFilter.Online;
-            _currentEntriesPage = 1;
-            RefreshEntriesView();
-        }
-
-        private void ConnectionsOfflineStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentConnectionsStatusFilter = StatusFilter.Offline;
-            _currentEntriesPage = 1;
-            RefreshEntriesView();
-        }
-
-        private void ConnectionsOtherStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentConnectionsStatusFilter = StatusFilter.Other;
+            _currentConnectionsStatusFilter = ParseStatusFilter(GetSelectedComboTag(ConnectionsStatusFilterComboBox));
             _currentEntriesPage = 1;
             RefreshEntriesView();
         }
@@ -339,45 +316,25 @@ namespace RdpManager
             RefreshEntriesView();
         }
 
-        private void CloudminiAllPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        private void CloudminiPlatformFilterComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _currentCloudminiPlatformFilter = PlatformFilter.All;
+            if (_isUpdatingFilterSelectors)
+            {
+                return;
+            }
+
+            _currentCloudminiPlatformFilter = ParsePlatformFilter(GetSelectedComboTag(CloudminiPlatformFilterComboBox));
             RebuildCloudminiPreview();
         }
 
-        private void CloudminiWindowsPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
+        private void CloudminiStatusFilterComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _currentCloudminiPlatformFilter = PlatformFilter.Windows;
-            RebuildCloudminiPreview();
-        }
+            if (_isUpdatingFilterSelectors)
+            {
+                return;
+            }
 
-        private void CloudminiLinuxPlatformFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentCloudminiPlatformFilter = PlatformFilter.Linux;
-            RebuildCloudminiPreview();
-        }
-
-        private void CloudminiAllStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentCloudminiStatusFilter = StatusFilter.All;
-            RebuildCloudminiPreview();
-        }
-
-        private void CloudminiOnlineStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentCloudminiStatusFilter = StatusFilter.Online;
-            RebuildCloudminiPreview();
-        }
-
-        private void CloudminiOfflineStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentCloudminiStatusFilter = StatusFilter.Offline;
-            RebuildCloudminiPreview();
-        }
-
-        private void CloudminiOtherStatusFilterButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            _currentCloudminiStatusFilter = StatusFilter.Other;
+            _currentCloudminiStatusFilter = ParseStatusFilter(GetSelectedComboTag(CloudminiStatusFilterComboBox));
             RebuildCloudminiPreview();
         }
 
@@ -430,6 +387,40 @@ namespace RdpManager
         private void BackToConnectionsButton_OnClick(object sender, RoutedEventArgs e)
         {
             SetNavigationFilter(NavigationFilter.AllConnections);
+        }
+
+        private void TitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2)
+            {
+                ToggleMaximizeRestoreWindow();
+                return;
+            }
+
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                DragMove();
+            }
+        }
+
+        private void MinimizeWindowButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeRestoreWindowButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            ToggleMaximizeRestoreWindow();
+        }
+
+        private void CloseWindowButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        private void MainWindow_OnStateChanged(object sender, EventArgs e)
+        {
+            UpdateMaximizeRestoreButtonState();
         }
 
         private void RowConnectButton_OnClick(object sender, RoutedEventArgs e)
@@ -813,6 +804,46 @@ namespace RdpManager
             Title = _isDirty
                 ? string.Format("RDP Manager {0} - {1} *", versionTag, fileName)
                 : string.Format("RDP Manager {0} - {1}", versionTag, fileName);
+            UpdateWindowTitleText();
+        }
+
+        private void UpdateWindowTitleText()
+        {
+            if (WindowTitleTextBlock != null)
+            {
+                WindowTitleTextBlock.Text = Title;
+            }
+        }
+
+        private void ToggleMaximizeRestoreWindow()
+        {
+            if (ResizeMode == ResizeMode.NoResize)
+            {
+                return;
+            }
+
+            WindowState = WindowState == WindowState.Maximized
+                ? WindowState.Normal
+                : WindowState.Maximized;
+        }
+
+        private void UpdateMaximizeRestoreButtonState()
+        {
+            if (MaximizeRestoreIconTextBlock == null)
+            {
+                return;
+            }
+
+            MaximizeRestoreIconTextBlock.Text = WindowState == WindowState.Maximized
+                ? "\uE923"
+                : "\uE922";
+
+            if (MaximizeRestoreWindowButton != null)
+            {
+                MaximizeRestoreWindowButton.ToolTip = WindowState == WindowState.Maximized
+                    ? "Restore down"
+                    : "Maximize";
+            }
         }
 
         private static string NormalizePort(string rawPort)
@@ -889,7 +920,7 @@ namespace RdpManager
         {
             UpdateNavigationVisuals();
             UpdateViewState();
-            UpdateFilterButtonVisuals();
+            UpdateFilterSelectors();
 
             if (_currentAppSection == AppSection.Connections)
             {
@@ -1154,41 +1185,84 @@ namespace RdpManager
             UpdateCloudminiEmptyState();
         }
 
-        private void UpdateFilterButtonVisuals()
+        private void UpdateFilterSelectors()
         {
-            SetFilterButtonVisual(ConnectionsAllPlatformFilterButton, _currentConnectionsPlatformFilter == PlatformFilter.All);
-            SetFilterButtonVisual(ConnectionsWindowsPlatformFilterButton, _currentConnectionsPlatformFilter == PlatformFilter.Windows);
-            SetFilterButtonVisual(ConnectionsLinuxPlatformFilterButton, _currentConnectionsPlatformFilter == PlatformFilter.Linux);
-            SetFilterButtonVisual(ConnectionsAllStatusFilterButton, _currentConnectionsStatusFilter == StatusFilter.All);
-            SetFilterButtonVisual(ConnectionsOnlineStatusFilterButton, _currentConnectionsStatusFilter == StatusFilter.Online);
-            SetFilterButtonVisual(ConnectionsOfflineStatusFilterButton, _currentConnectionsStatusFilter == StatusFilter.Offline);
-            SetFilterButtonVisual(ConnectionsOtherStatusFilterButton, _currentConnectionsStatusFilter == StatusFilter.Other);
-
-            SetFilterButtonVisual(CloudminiAllPlatformFilterButton, _currentCloudminiPlatformFilter == PlatformFilter.All);
-            SetFilterButtonVisual(CloudminiWindowsPlatformFilterButton, _currentCloudminiPlatformFilter == PlatformFilter.Windows);
-            SetFilterButtonVisual(CloudminiLinuxPlatformFilterButton, _currentCloudminiPlatformFilter == PlatformFilter.Linux);
-            SetFilterButtonVisual(CloudminiAllStatusFilterButton, _currentCloudminiStatusFilter == StatusFilter.All);
-            SetFilterButtonVisual(CloudminiOnlineStatusFilterButton, _currentCloudminiStatusFilter == StatusFilter.Online);
-            SetFilterButtonVisual(CloudminiOfflineStatusFilterButton, _currentCloudminiStatusFilter == StatusFilter.Offline);
-            SetFilterButtonVisual(CloudminiOtherStatusFilterButton, _currentCloudminiStatusFilter == StatusFilter.Other);
+            _isUpdatingFilterSelectors = true;
+            try
+            {
+                SetComboSelectedTag(ConnectionsPlatformFilterComboBox, _currentConnectionsPlatformFilter.ToString());
+                SetComboSelectedTag(ConnectionsStatusFilterComboBox, _currentConnectionsStatusFilter.ToString());
+                SetComboSelectedTag(CloudminiPlatformFilterComboBox, _currentCloudminiPlatformFilter.ToString());
+                SetComboSelectedTag(CloudminiStatusFilterComboBox, _currentCloudminiStatusFilter.ToString());
+            }
+            finally
+            {
+                _isUpdatingFilterSelectors = false;
+            }
         }
 
-        private void SetFilterButtonVisual(Button button, bool isActive)
+        private static string GetSelectedComboTag(ComboBox comboBox)
         {
-            if (button == null)
+            var selectedItem = comboBox == null ? null : comboBox.SelectedItem as ComboBoxItem;
+            return selectedItem == null ? string.Empty : (selectedItem.Tag as string ?? string.Empty);
+        }
+
+        private static void SetComboSelectedTag(ComboBox comboBox, string tag)
+        {
+            if (comboBox == null)
             {
                 return;
             }
 
-            button.Background = isActive
-                ? (Brush)(FindResource("AccentSoftBrush") as Brush ?? Brushes.LightBlue)
-                : (Brush)(FindResource("SurfaceBrush") as Brush ?? Brushes.White);
-            button.BorderBrush = isActive
-                ? (Brush)(FindResource("AccentSoftBorderBrush") as Brush ?? Brushes.DodgerBlue)
-                : (Brush)(FindResource("CardBorderBrush") as Brush ?? Brushes.LightGray);
-            button.Foreground = isActive
-                ? (Brush)(FindResource("AccentBrush") as Brush ?? Brushes.DodgerBlue)
-                : (Brush)(FindResource("TextPrimaryBrush") as Brush ?? Brushes.Black);
+            foreach (var item in comboBox.Items)
+            {
+                var comboBoxItem = item as ComboBoxItem;
+                if (comboBoxItem != null && string.Equals(comboBoxItem.Tag as string, tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    comboBox.SelectedItem = comboBoxItem;
+                    return;
+                }
+            }
+
+            if (comboBox.Items.Count > 0)
+            {
+                comboBox.SelectedIndex = 0;
+            }
+        }
+
+        private static PlatformFilter ParsePlatformFilter(string value)
+        {
+            if (string.Equals(value, "Windows", StringComparison.OrdinalIgnoreCase))
+            {
+                return PlatformFilter.Windows;
+            }
+
+            if (string.Equals(value, "Linux", StringComparison.OrdinalIgnoreCase))
+            {
+                return PlatformFilter.Linux;
+            }
+
+            return PlatformFilter.All;
+        }
+
+        private static StatusFilter ParseStatusFilter(string value)
+        {
+            if (string.Equals(value, "Online", StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusFilter.Online;
+            }
+
+            if (string.Equals(value, "Offline", StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusFilter.Offline;
+            }
+
+            if (string.Equals(value, "Other", StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusFilter.Other;
+            }
+
+            return StatusFilter.All;
         }
 
         private void UpdateConnectionsGroupOptions()

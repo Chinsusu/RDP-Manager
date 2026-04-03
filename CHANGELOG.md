@@ -4,6 +4,13 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 
 ## [Unreleased]
 
+### Changed
+
+- Local filter toolbar doi tu chip sang dropdown compact de tiet kiem ngang va de doc hon khi co them `Group`.
+- Sidebar duoc chia lai thanh cac section `Search`, `Browse`, `Actions`, `Settings` de nhin gon hon.
+- App gio dung custom title bar lien voi UI thay cho native title bar, kem nut `min / max / close` lon hon theo huong Win 11.
+- Bang `Saved connections` khong con hien cot `HostName`; thu tu cot duoc doi de `Password` dung ngay sau `User`.
+
 ## [1.2.0-phase2-local-ops] - 2026-04-02
 
 ### Added

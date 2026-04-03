@@ -20,8 +20,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
   - Subtitle: huong dan copy va connect ro rang
 - Main list area:
   - Search box o sidebar
-  - Platform filter chips: `All`, `Windows`, `Linux`
-  - Group filter inline
+  - Filter toolbar dang dropdown compact: `Platform`, `Status`, `Group`
   - Data grid / list grid
   - Pagination footer, mac dinh `10 items/page`
   - Health check action cho selected item va current page
@@ -36,8 +35,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 ## Main components
 
 - Search input
-- Platform filter chips
-- Group filter
+- Filter dropdowns
 - Connections grid
 - Pagination controls
 - Entry editor
@@ -45,11 +43,11 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 
 ## Row columns
 
-- HostName
 - Host
 - Port
 - User
 - Password (masked)
+- Status
 - Health
 - Action
 
@@ -110,3 +108,5 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Ket noi RDP chi xay ra khi user bam `Connect`.
 - User co the luu ghi chu local va phan loai entry bang `Group` / `Tags`.
 - User co the thuc hien TCP health check tren item chon hoac page hien tai.
+- Filter toolbar khong duoc chiem qua nhieu chieu ngang; phai giu doc duoc o do phan giai hien tai.
+- Title bar phai lien visual voi UI con van ho tro drag, maximize, minimize, close.
