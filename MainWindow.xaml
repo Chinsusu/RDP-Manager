@@ -291,10 +291,42 @@
         </Style>
 
         <Style x:Key="SidebarSectionLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="10" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
-            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <Style x:Key="SidebarItemButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="SidebarNavButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarItemButtonStyle}">
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+
+        <Style x:Key="SidebarActionButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarItemButtonStyle}">
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <Style x:Key="SidebarPrimaryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarItemButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <Style x:Key="SidebarDangerActionButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarItemButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource DangerSoftBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource DangerSoftBorderBrush}" />
+            <Setter Property="Foreground" Value="#B33838" />
+            <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
 
         <Style x:Key="FilterComboBoxItemStyle" TargetType="ComboBoxItem">
@@ -584,13 +616,14 @@
                 BorderBrush="{StaticResource CardBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="14">
-                <Grid Margin="20,18">
+                <Grid Margin="18,16">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <StackPanel>
@@ -619,20 +652,20 @@
                     </DockPanel>
                 </StackPanel>
 
-                <StackPanel Grid.Row="1" Margin="0,20,0,0">
+                <StackPanel Grid.Row="1" Margin="0,16,0,0">
                     <TextBlock Style="{StaticResource SidebarSectionLabelStyle}"
                                Text="SEARCH" />
                     <TextBox x:Name="SearchTextBox"
+                             Height="36"
                              ToolTip="Search HostName, Host, User, Group, Tags, and Notes"
                              TextChanged="SearchTextBox_OnTextChanged" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="2" Margin="0,22,0,0">
+                <StackPanel Grid.Row="2" Margin="0,18,0,0">
                     <TextBlock Style="{StaticResource SidebarSectionLabelStyle}"
                                Text="BROWSE" />
                     <Button x:Name="AllConnectionsNavButton"
-                            Style="{StaticResource NavButtonStyle}"
-                            Background="#F1F6FF"
+                            Style="{StaticResource SidebarNavButtonStyle}"
                             Click="AllConnectionsNavButton_OnClick">
                         <DockPanel>
                             <TextBlock x:Name="AllConnectionsNavIcon" FontFamily="Segoe MDL2 Assets" Text="&#xE80F;" />
@@ -640,7 +673,7 @@
                         </DockPanel>
                     </Button>
                     <Button x:Name="FavoritesNavButton"
-                            Style="{StaticResource NavButtonStyle}"
+                            Style="{StaticResource SidebarNavButtonStyle}"
                             Click="FavoritesNavButton_OnClick">
                         <DockPanel>
                             <TextBlock x:Name="FavoritesNavIcon" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextSecondaryBrush}" Text="&#xE734;" />
@@ -648,7 +681,7 @@
                         </DockPanel>
                     </Button>
                     <Button x:Name="RecentNavButton"
-                            Style="{StaticResource NavButtonStyle}"
+                            Style="{StaticResource SidebarNavButtonStyle}"
                             Click="RecentNavButton_OnClick">
                         <DockPanel>
                             <TextBlock x:Name="RecentNavIcon" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextSecondaryBrush}" Text="&#xE823;" />
@@ -656,7 +689,7 @@
                         </DockPanel>
                     </Button>
                     <Button x:Name="CloudminiSyncNavButton"
-                            Style="{StaticResource NavButtonStyle}"
+                            Style="{StaticResource SidebarNavButtonStyle}"
                             Click="CloudminiSyncNavButton_OnClick">
                         <DockPanel>
                             <TextBlock x:Name="CloudminiSyncNavIcon" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextSecondaryBrush}" Text="&#xE753;" />
@@ -665,52 +698,47 @@
                     </Button>
                 </StackPanel>
 
-                <StackPanel x:Name="ConnectionsActionsPanel" Grid.Row="3" Margin="0,24,0,0">
+                <StackPanel x:Name="ConnectionsActionsPanel" Grid.Row="3" Margin="0,18,0,0">
                     <TextBlock Style="{StaticResource SidebarSectionLabelStyle}"
                                Text="ACTIONS" />
                     <Button x:Name="ConnectButton"
-                            Margin="0,0,0,10"
                             Click="ConnectButton_OnClick"
                             Content="Connect selected"
-                            Style="{StaticResource PrimaryButtonStyle}" />
+                            Style="{StaticResource SidebarPrimaryActionButtonStyle}" />
                     <Button x:Name="CheckSelectedButton"
-                            Margin="0,0,0,10"
                             Click="CheckSelectedButton_OnClick"
                             Content="Check selected"
-                            Style="{StaticResource ButtonBaseStyle}" />
+                            Style="{StaticResource SidebarActionButtonStyle}" />
                     <Button x:Name="AddButton"
-                            Margin="0,0,0,10"
                             Click="AddButton_OnClick"
                             Content="Add new entry"
-                            Style="{StaticResource ButtonBaseStyle}" />
+                            Style="{StaticResource SidebarActionButtonStyle}" />
                     <Button x:Name="OpenCsvButton"
-                            Margin="0,0,0,10"
                             Click="OpenCsvButton_OnClick"
                             Content="Import CSV"
-                            Style="{StaticResource ButtonBaseStyle}" />
+                            Style="{StaticResource SidebarActionButtonStyle}" />
                     <Button x:Name="SaveButton"
-                            Margin="0,0,0,10"
                             Click="SaveButton_OnClick"
                             Content="Save database"
-                            Style="{StaticResource ButtonBaseStyle}" />
+                            Style="{StaticResource SidebarActionButtonStyle}" />
                     <Button x:Name="SaveAsButton"
-                            Margin="0,0,0,10"
                             Click="SaveAsButton_OnClick"
                             Content="Export CSV"
-                            Style="{StaticResource ButtonBaseStyle}" />
+                            Style="{StaticResource SidebarActionButtonStyle}" />
                     <Button x:Name="DeleteButton"
+                            Margin="0"
                             Click="DeleteButton_OnClick"
                             Content="Delete selected"
-                            Style="{StaticResource DangerButtonStyle}" />
+                            Style="{StaticResource SidebarDangerActionButtonStyle}" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="4"
+                <StackPanel Grid.Row="5"
                             VerticalAlignment="Bottom">
-                    <Border Margin="0,0,0,14"
+                    <Border Margin="0,0,0,10"
                             BorderBrush="{StaticResource CardBorderBrush}"
                             BorderThickness="0,1,0,0" />
                     <Button x:Name="SettingsNavButton"
-                            Style="{StaticResource NavButtonStyle}"
+                            Style="{StaticResource SidebarNavButtonStyle}"
                             Click="SettingsNavButton_OnClick">
                         <DockPanel>
                             <TextBlock x:Name="SettingsNavIcon" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextSecondaryBrush}" Text="&#xE713;" />
@@ -718,7 +746,7 @@
                         </DockPanel>
                     </Button>
                     <TextBlock x:Name="VersionTagTextBlock"
-                               Margin="12,10,0,0"
+                               Margin="12,8,0,0"
                                FontSize="11"
                                Foreground="{StaticResource TextMutedBrush}"
                                Text="v1.2.0-phase2-local-ops" />

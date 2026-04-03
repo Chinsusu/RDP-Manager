@@ -33,6 +33,7 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 - `Import CSV` se nap du lieu vao DB; `Save database` se persist vao DB; `Export CSV` se xuat snapshot tu DB.
 - Fullscreen/maximize va footer layout duoc chinh lai de khong bi an boi taskbar, khong de lai khoang trang duoi day, va footer trai/phai dung cung baseline.
 - Bang `Saved connections` khong con scroll rieng; list hien theo phan trang co dinh de layout on dinh hon.
+- Sidebar duoc chuan hoa lai theo mot he item duy nhat va giu co dinh vi tri `Search / Browse / Actions / Settings` khi doi section.
 
 ## [1.2.0-phase2-local-ops] - 2026-04-02
 

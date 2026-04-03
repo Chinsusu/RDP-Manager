@@ -2003,12 +2003,16 @@ namespace RdpManager
 
             if (SearchTextBox != null)
             {
-                SearchTextBox.Visibility = _currentAppSection == AppSection.Connections ? Visibility.Visible : Visibility.Collapsed;
+                SearchTextBox.Visibility = Visibility.Visible;
+                SearchTextBox.IsEnabled = _currentAppSection == AppSection.Connections;
+                SearchTextBox.Opacity = _currentAppSection == AppSection.Connections ? 1.0 : 0.55;
             }
 
             if (ConnectionsActionsPanel != null)
             {
-                ConnectionsActionsPanel.Visibility = _currentAppSection == AppSection.Connections ? Visibility.Visible : Visibility.Collapsed;
+                ConnectionsActionsPanel.Visibility = Visibility.Visible;
+                ConnectionsActionsPanel.IsEnabled = _currentAppSection == AppSection.Connections;
+                ConnectionsActionsPanel.Opacity = _currentAppSection == AppSection.Connections ? 1.0 : 0.55;
             }
         }
 
@@ -2024,13 +2028,16 @@ namespace RdpManager
         private void SetNavigationVisual(Control control, TextBlock icon, TextBlock label, bool isActive)
         {
             var activeBackground = FindResource("AccentSoftBrush") as Brush;
-            var inactiveBackground = Brushes.Transparent;
+            var inactiveBackground = FindResource("SurfaceBrush") as Brush;
+            var activeBorder = FindResource("AccentSoftBorderBrush") as Brush;
+            var inactiveBorder = FindResource("CardBorderBrush") as Brush;
             var activeForeground = FindResource("TextPrimaryBrush") as Brush;
-            var inactiveForeground = FindResource("TextSecondaryBrush") as Brush;
+            var inactiveForeground = FindResource("TextPrimaryBrush") as Brush;
 
             if (control != null)
             {
                 control.Background = isActive ? activeBackground : inactiveBackground;
+                control.BorderBrush = isActive ? activeBorder : inactiveBorder;
             }
 
             if (icon != null)
