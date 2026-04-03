@@ -21,20 +21,20 @@ Phase 2
 - Store Cloudmini token
 - Option `Remember token on this machine`
 - Button `Clear saved token`
-- Quan ly `Jump Host Profile`
+- Quan ly `Proxy server` profile
 - SSH secret phai dung protected storage
 
-## Jump Hosts
+## Proxy Servers
 
-- Jump host profile list
+- Proxy server profile list
 - Add profile
 - Edit profile
 - Delete profile
 - Test SSH
 - Test SSH phai chay bang cung backend auth/tunnel config nhu flow connect that
 - Khong hien raw secret sau khi save
-- Hien trang thai `Stored securely` cho key da import
-- Cho phep rotate key ma khong phai tao lai profile
+- Hien trang thai `Stored securely` cho password da luu
+- GUI hien tai mac dinh theo `SSH password auth`
 
 ## Sync defaults
 
@@ -59,6 +59,6 @@ Phase 2
 - Settings tach khoi connection data
 - Token khong duoc lo ra UI sau khi luu
 - User co the reset settings ma khong mat CSV
-- Jump host profile co the dung lai cho nhieu connection
+- Proxy server profile co the dung lai cho nhieu connection
 - SSH auth material khong duoc nam trong CSV
 - `Test SSH` phai bao ket qua ro rang ma khong bat user xem log backend

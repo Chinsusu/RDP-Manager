@@ -83,6 +83,18 @@ namespace RdpManager.Services
             return document.Secrets.Any(secret => string.Equals(secret.SecretId, secretId.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
+        public static SecretKind? GetSecretKind(string secretId)
+        {
+            if (string.IsNullOrWhiteSpace(secretId))
+            {
+                return null;
+            }
+
+            var document = LoadDocument();
+            var record = document.Secrets.FirstOrDefault(secret => string.Equals(secret.SecretId, secretId.Trim(), StringComparison.OrdinalIgnoreCase));
+            return record == null ? (SecretKind?)null : record.Kind;
+        }
+
         public static void DeleteSecret(string secretId)
         {
             if (string.IsNullOrWhiteSpace(secretId))

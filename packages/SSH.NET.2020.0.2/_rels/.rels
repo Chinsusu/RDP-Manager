@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Type="http://schemas.microsoft.com/packaging/2010/07/manifest" Target="/SSH.NET.nuspec" Id="RF7227768C06F59FF" />
+  <Relationship Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="/package/services/metadata/core-properties/daaaa5b3392f409b8cbccff4a9b88b6e.psmdcp" Id="R854D41BBCEEF88C6" />
+</Relationships>

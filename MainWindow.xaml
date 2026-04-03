@@ -365,6 +365,8 @@
                                               HorizontalAlignment="Left"
                                               VerticalAlignment="Center"
                                               Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                               ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                               IsHitTestVisible="False" />
                             <TextBlock Margin="0,0,12,0"
@@ -413,6 +415,13 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="GridProxyComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource FilterComboBoxStyle}">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="MinWidth" Value="136" />
+            <Setter Property="Padding" Value="10,0,30,0" />
+            <Setter Property="FontSize" Value="12" />
         </Style>
 
         <Style TargetType="DataGrid">
@@ -720,14 +729,14 @@
         <Grid Grid.Column="1"
               Margin="14,0,14,14">
             <Grid>
-                <Grid x:Name="ConnectionsView">
+                <Grid x:Name="ConnectionsView" MinHeight="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="264" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Margin="0,0,16,0" Style="{StaticResource CardStyle}">
-                        <Grid>
+                    <Border Grid.Column="0" Margin="0,0,16,0" MinHeight="0" Style="{StaticResource CardStyle}">
+                        <Grid MinHeight="0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
@@ -778,11 +787,12 @@
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
-                            <Grid Grid.Row="1">
+                            <Grid Grid.Row="1" MinHeight="0">
                                 <DataGrid x:Name="EntriesGrid"
                                            AutoGenerateColumns="False"
                                            CanUserAddRows="False"
                                            IsReadOnly="True"
+                                           MinHeight="0"
                                            SelectionMode="Single"
                                            SelectionUnit="FullRow"
                                            SelectionChanged="EntriesGrid_OnSelectionChanged">
@@ -821,6 +831,20 @@
                                                                ToolTip="Click to copy password"
                                                                Tag="{Binding Password}"
                                                                MouseLeftButtonUp="CopyValueTextBlock_OnMouseLeftButtonUp" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Width="1.0*" Header="Proxy">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox Margin="0"
+                                                              DisplayMemberPath="DisplayName"
+                                                              SelectedValuePath="SelectionKey"
+                                                              SelectedValue="{Binding ProxySelectionKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              TextSearch.TextPath="DisplayName"
+                                                              ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=EntryProxyOptions}"
+                                                              SelectionChanged="EntryGridProxyComboBox_OnSelectionChanged"
+                                                              Style="{StaticResource GridProxyComboBoxStyle}" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
@@ -907,8 +931,8 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Column="1" Style="{StaticResource CardStyle}">
-                        <Grid>
+                    <Border Grid.Column="1" MinHeight="0" Style="{StaticResource CardStyle}">
+                        <Grid MinHeight="0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -921,7 +945,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
@@ -988,30 +1012,15 @@
                                          Margin="0,8,0,14"
                                          PasswordChanged="PasswordBox_OnPasswordChanged" />
 
-                            <Grid Grid.Row="9" Margin="0,0,0,14">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Margin="0,0,8,0">
-                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="TRANSPORT" />
-                                    <ComboBox x:Name="EntryTransportComboBox"
-                                              Margin="0,8,0,0"
-                                              SelectionChanged="EntryTransportComboBox_OnSelectionChanged"
-                                              Style="{StaticResource FilterComboBoxStyle}">
-                                        <ComboBoxItem Content="Direct" Tag="Direct" Style="{StaticResource FilterComboBoxItemStyle}" />
-                                        <ComboBoxItem Content="SSH Tunnel" Tag="SshTunnel" Style="{StaticResource FilterComboBoxItemStyle}" />
-                                    </ComboBox>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="JUMP HOST" />
-                                    <ComboBox x:Name="EntryJumpHostProfileComboBox"
-                                              Margin="0,8,0,0"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectionChanged="EntryJumpHostProfileComboBox_OnSelectionChanged"
-                                              Style="{StaticResource FilterComboBoxStyle}" />
-                                </StackPanel>
-                            </Grid>
+                            <StackPanel Grid.Row="9" Margin="0,0,0,14">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PROXY" />
+                                <ComboBox x:Name="EntryProxyComboBox"
+                                          Margin="0,8,0,0"
+                                          DisplayMemberPath="DisplayName"
+                                          TextSearch.TextPath="DisplayName"
+                                          SelectionChanged="EntryProxyComboBox_OnSelectionChanged"
+                                          Style="{StaticResource FilterComboBoxStyle}" />
+                            </StackPanel>
 
                             <Grid Grid.Row="10" Margin="0,0,0,14">
                                 <Grid.ColumnDefinitions>
@@ -1036,6 +1045,7 @@
                                 <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="NOTES" />
                                 <TextBox x:Name="NotesTextBox"
                                          Margin="0,8,0,0"
+                                         MaxHeight="96"
                                          TextChanged="Editor_OnTextChanged"
                                          Style="{StaticResource MultilineTextBoxStyle}" />
                             </StackPanel>
@@ -1300,7 +1310,7 @@
                                 <TextBlock FontSize="24" FontWeight="Bold" Text="Settings" />
                                 <TextBlock Margin="0,6,0,0"
                                            Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="Manage Cloudmini token storage, local diagnostics, and shared SSH jump host profiles."
+                                          Text="Manage Cloudmini token storage, local diagnostics, and shared SSH proxy server profiles."
                                            TextWrapping="Wrap" />
                             </StackPanel>
                             <Button x:Name="BackToConnectionsButton"
@@ -1358,7 +1368,7 @@
                                             <TextBlock x:Name="JumpHostsPathTextBlock"
                                                        Margin="0,8,0,0"
                                                        TextWrapping="Wrap"
-                                                       Text="Jump hosts: -" />
+                                                      Text="Proxy servers: -" />
                                             <TextBlock x:Name="SecretVaultPathTextBlock"
                                                        Margin="0,8,0,0"
                                                        TextWrapping="Wrap"
@@ -1370,7 +1380,7 @@
                                             <TextBlock x:Name="JumpHostCountTextBlock"
                                                        Margin="0,8,0,0"
                                                        TextWrapping="Wrap"
-                                                       Text="Jump host profiles: 0" />
+                                                       Text="Proxy server profiles: 0" />
                                             <TextBlock x:Name="AppVersionTextBlock"
                                                        Margin="0,8,0,0"
                                                        TextWrapping="Wrap"
@@ -1393,10 +1403,10 @@
                                         </Grid.ColumnDefinitions>
 
                                         <StackPanel>
-                                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="JUMP HOST PROFILES" />
+                                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PROXY SERVERS" />
                                             <TextBlock Margin="0,6,0,0"
                                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                                       Text="Shared profiles for future SSH tunnel connections."
+                                                       Text="Shared proxy server profiles for SSH tunnel connections."
                                                        TextWrapping="Wrap" />
                                             <Border Margin="0,12,0,0"
                                                     Padding="8"
@@ -1429,13 +1439,13 @@
                                                 <Button x:Name="AddJumpHostProfileButton"
                                                         Margin="0,0,8,0"
                                                         Click="AddJumpHostProfileButton_OnClick"
-                                                        Content="Add profile"
+                                                        Content="Add proxy"
                                                         Style="{StaticResource ButtonBaseStyle}" />
                                                 <Button x:Name="DeleteJumpHostProfileButton"
                                                         Grid.Column="1"
                                                         Margin="8,0,0,0"
                                                         Click="DeleteJumpHostProfileButton_OnClick"
-                                                        Content="Delete profile"
+                                                        Content="Delete proxy"
                                                         Style="{StaticResource DangerButtonStyle}" />
                                             </Grid>
                                         </StackPanel>
@@ -1447,143 +1457,178 @@
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="*" />
                                             </Grid.RowDefinitions>
 
-                                            <StackPanel>
-                                                <TextBlock FontSize="18" FontWeight="SemiBold" Text="Jump host editor" />
-                                                <TextBlock Margin="0,6,0,0"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                                           Text="Store shared SSH tunnel settings without exposing the private key in the UI."
-                                                           TextWrapping="Wrap" />
-                                            </StackPanel>
-
-                                            <Grid Grid.Row="1" Margin="0,18,0,0">
+                                            <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="190" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="Proxy server editor" />
+                                                    <TextBlock Margin="0,6,0,0"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               Text="Shared password-based proxy settings for SSH tunnels."
+                                                               TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                <Border Grid.Column="1"
+                                                        VerticalAlignment="Top"
+                                                        Padding="10,6"
+                                                        Background="#F5F8FD"
+                                                        BorderBrush="{StaticResource CardBorderBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="10">
+                                                    <TextBlock FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               Text="SSH PASSWORD" />
+                                                </Border>
+                                                <ComboBox x:Name="JumpHostAuthModeComboBox"
+                                                          Width="1"
+                                                          Height="1"
+                                                          HorizontalAlignment="Right"
+                                                          VerticalAlignment="Top"
+                                                          Opacity="0"
+                                                          IsHitTestVisible="False"
+                                                          SelectionChanged="JumpHostAuthModeComboBox_OnSelectionChanged"
+                                                          Style="{StaticResource FilterComboBoxStyle}">
+                                                    <ComboBoxItem Content="Password" Tag="Password" Style="{StaticResource FilterComboBoxItemStyle}" />
+                                                </ComboBox>
+                                            </Grid>
+
+                                            <Grid Grid.Row="1" Margin="0,14,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="96" />
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Margin="0,0,12,0">
                                                     <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PROFILE NAME" />
                                                     <TextBox x:Name="JumpHostProfileNameTextBox"
-                                                             Margin="0,8,0,0" />
+                                                             Margin="0,6,0,0" />
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="AUTH MODE" />
-                                                    <ComboBox x:Name="JumpHostAuthModeComboBox"
-                                                              Margin="0,8,0,0"
-                                                              SelectionChanged="JumpHostAuthModeComboBox_OnSelectionChanged"
-                                                              Style="{StaticResource FilterComboBoxStyle}">
-                                                        <ComboBoxItem Content="Embedded key" Tag="EmbeddedPrivateKey" Style="{StaticResource FilterComboBoxItemStyle}" />
-                                                        <ComboBoxItem Content="Agent" Tag="Agent" Style="{StaticResource FilterComboBoxItemStyle}" />
-                                                    </ComboBox>
-                                                </StackPanel>
-                                            </Grid>
-
-                                            <Grid Grid.Row="2" Margin="0,14,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="110" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Margin="0,0,12,0">
+                                                <StackPanel Grid.Column="1" Margin="0,0,12,0">
                                                     <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="HOST" />
                                                     <TextBox x:Name="JumpHostHostTextBox"
-                                                             Margin="0,8,0,0" />
+                                                             Margin="0,6,0,0" />
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="1">
+                                                <StackPanel Grid.Column="2">
                                                     <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PORT" />
                                                     <TextBox x:Name="JumpHostPortTextBox"
-                                                             Margin="0,8,0,0"
+                                                             Margin="0,6,0,0"
                                                              Text="22" />
                                                 </StackPanel>
                                             </Grid>
 
-                                            <TextBlock Grid.Row="3"
-                                                       Margin="0,14,0,0"
-                                                       FontSize="12"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       Text="USER" />
-                                            <TextBox x:Name="JumpHostUserTextBox"
-                                                     Grid.Row="4"
-                                                     Margin="0,8,0,0" />
-
-                                            <Grid Grid.Row="5" Margin="0,14,0,0">
+                                            <Grid Grid.Row="2" Margin="0,12,0,0">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="120" />
-                                                    <ColumnDefinition Width="120" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Margin="0,0,12,0">
+                                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="USER" />
+                                                    <TextBox x:Name="JumpHostUserTextBox"
+                                                             Margin="0,6,0,0" />
+                                                </StackPanel>
+                                                <StackPanel x:Name="JumpHostPasswordPanel"
+                                                            Grid.Column="1"
+                                                            Visibility="Collapsed">
+                                                    <TextBlock FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               Text="PASSWORD" />
+                                                    <PasswordBox x:Name="JumpHostPasswordBox"
+                                                                 Margin="0,6,0,0" />
+                                                    <TextBlock x:Name="JumpHostPasswordHintTextBlock"
+                                                               Margin="0,6,0,0"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               Text="Leave blank to keep the stored password for this profile."
+                                                               TextWrapping="Wrap" />
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <Grid Grid.Row="3" Margin="0,12,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="96" />
+                                                    <ColumnDefinition Width="96" />
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Margin="0,0,12,0">
                                                     <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="HOST KEY FINGERPRINT" />
                                                     <TextBox x:Name="JumpHostHostKeyFingerprintTextBox"
-                                                             Margin="0,8,0,0" />
+                                                             Margin="0,6,0,0" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1" Margin="0,0,12,0">
                                                     <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="TIMEOUT" />
                                                     <TextBox x:Name="JumpHostConnectTimeoutTextBox"
-                                                             Margin="0,8,0,0"
+                                                             Margin="0,6,0,0"
                                                              Text="10" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2">
                                                     <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="KEEPALIVE" />
                                                     <TextBox x:Name="JumpHostKeepAliveTextBox"
-                                                             Margin="0,8,0,0"
+                                                             Margin="0,6,0,0"
                                                              Text="30" />
                                                 </StackPanel>
                                             </Grid>
 
-                                            <Border Grid.Row="6"
-                                                    Margin="0,18,0,0"
-                                                    Padding="16"
+                                            <Border Grid.Row="4"
+                                                    Margin="0,12,0,0"
+                                                    Padding="14"
                                                     Background="White"
                                                     BorderBrush="{StaticResource CardBorderBrush}"
                                                     BorderThickness="1"
                                                     CornerRadius="12">
-                                                <StackPanel>
-                                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="KEY MATERIAL" />
-                                                    <TextBlock x:Name="JumpHostKeyStatusTextBlock"
-                                                               Margin="0,8,0,0"
-                                                               TextWrapping="Wrap"
-                                                               Text="No private key stored for this profile." />
-                                                    <TextBlock x:Name="JumpHostTestStatusTextBlock"
-                                                               Margin="0,6,0,0"
-                                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                                               TextWrapping="Wrap"
-                                                               Text="SSH test not run yet." />
-                                                    <Grid Margin="0,14,0,0">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="*" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <Button x:Name="ImportJumpHostKeyButton"
-                                                                Margin="0,0,8,0"
-                                                                Click="ImportJumpHostKeyButton_OnClick"
-                                                                Content="Import key"
-                                                                Style="{StaticResource ButtonBaseStyle}" />
-                                                        <Button x:Name="ClearJumpHostKeyButton"
-                                                                Grid.Column="1"
-                                                                Margin="8,0,8,0"
-                                                                Click="ClearJumpHostKeyButton_OnClick"
-                                                                Content="Clear key"
-                                                                Style="{StaticResource ButtonBaseStyle}" />
-                                                        <Button x:Name="TestJumpHostProfileButton"
-                                                                Grid.Column="2"
-                                                                Margin="8,0,8,0"
-                                                                Click="TestJumpHostProfileButton_OnClick"
-                                                                Content="Test SSH"
-                                                                Style="{StaticResource ButtonBaseStyle}" />
-                                                        <Button x:Name="SaveJumpHostProfileButton"
-                                                                Grid.Column="3"
-                                                                Margin="8,0,0,0"
-                                                                Click="SaveJumpHostProfileButton_OnClick"
-                                                                Content="Save profile"
-                                                                Style="{StaticResource PrimaryButtonStyle}" />
-                                                    </Grid>
-                                                </StackPanel>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Margin="0,0,18,0" VerticalAlignment="Center">
+                                                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="PASSWORD STATUS" />
+                                                        <TextBlock x:Name="JumpHostKeyStatusTextBlock"
+                                                                   Margin="0,6,0,0"
+                                                                   TextWrapping="Wrap"
+                                                                   Text="No SSH secret stored for this profile." />
+                                                        <TextBlock x:Name="JumpHostTestStatusTextBlock"
+                                                                   Margin="0,4,0,0"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   Text="SSH test not run yet." />
+                                                    </StackPanel>
+                                                    <Button x:Name="ImportJumpHostKeyButton"
+                                                            Grid.Column="1"
+                                                            Width="0"
+                                                            Height="0"
+                                                            Margin="0"
+                                                            Visibility="Collapsed"
+                                                            Click="ImportJumpHostKeyButton_OnClick"
+                                                            Content="Import key"
+                                                            Style="{StaticResource ButtonBaseStyle}" />
+                                                    <Button x:Name="ClearJumpHostKeyButton"
+                                                            Grid.Column="2"
+                                                            Margin="0,0,10,0"
+                                                            VerticalAlignment="Center"
+                                                            Click="ClearJumpHostKeyButton_OnClick"
+                                                            Content="Clear password"
+                                                            Style="{StaticResource ButtonBaseStyle}" />
+                                                    <Button x:Name="TestJumpHostProfileButton"
+                                                            Grid.Column="3"
+                                                            Margin="0,0,10,0"
+                                                            VerticalAlignment="Center"
+                                                            Click="TestJumpHostProfileButton_OnClick"
+                                                            Content="Test SSH"
+                                                            Style="{StaticResource ButtonBaseStyle}" />
+                                                    <Button x:Name="SaveJumpHostProfileButton"
+                                                            Grid.Column="4"
+                                                            VerticalAlignment="Center"
+                                                            Click="SaveJumpHostProfileButton_OnClick"
+                                                            Content="Save profile"
+                                                            Style="{StaticResource PrimaryButtonStyle}" />
+                                                </Grid>
                                             </Border>
                                         </Grid>
                                     </Grid>
