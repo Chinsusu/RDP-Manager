@@ -54,6 +54,11 @@
 - Token khong log plain text
 - Password Cloudmini khong log plain text
 - Credential RDP dang la plain text do business requirement, nhung docs phai note ro risk
+- SSH private key, certificate, passphrase khong duoc log plain text
+- SSH secret khong duoc luu trong CSV hoac hardcode trong XAML / code-behind
+- Secret storage phai di qua abstraction (`ISecretVault`), khong goi truc tiep protected API tung noi
+- Temp key file phai duoc cleanup trong `finally`
+- Runtime connect flow cho `SSH Tunnel` khong duoc phu thuoc vao password prompt cho user cuoi
 
 ## API integration rules
 

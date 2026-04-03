@@ -35,7 +35,7 @@ namespace RdpManager.Services
         public static void Save(AppSettings settings)
         {
             var path = GetSettingsPath();
-            EnsureSettingsDirectory();
+            EnsureApplicationDataDirectory();
 
             var serializer = new XmlSerializer(typeof(AppSettings));
             using (var stream = File.Create(path))
@@ -78,17 +78,17 @@ namespace RdpManager.Services
 
         public static string GetSettingsPath()
         {
-            return Path.Combine(GetSettingsDirectory(), "settings.user.xml");
+            return Path.Combine(GetApplicationDataDirectory(), "settings.user.xml");
         }
 
-        private static string GetSettingsDirectory()
+        public static string GetApplicationDataDirectory()
         {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RdpManager");
         }
 
-        private static void EnsureSettingsDirectory()
+        public static void EnsureApplicationDataDirectory()
         {
-            var directory = GetSettingsDirectory();
+            var directory = GetApplicationDataDirectory();
             if (!Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);

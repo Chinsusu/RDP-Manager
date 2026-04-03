@@ -12,6 +12,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Toi muon sua thong tin va connect ngay.
 - Toi muon tao entry moi ma khong ghi de entry cu.
 - Toi muon check nhanh host nao dang reachable tu may hien tai.
+- Toi muon chon connection mode `Direct` hoac `SSH Tunnel` ma khong can sua CSV.
 
 ## Layout
 
@@ -28,6 +29,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Right panel:
   - Entry editor
   - Favorite toggle
+  - Transport selector
   - Group / Tags / Notes
   - Apply entry
   - Clear form
@@ -73,6 +75,8 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - `HostName` la display label, co the de trong
 - Password duoc luu plain text theo yeu cau business hien tai
 - `Group`, `Tags`, `Notes` la local metadata, khong vao CSV
+- `TransportMode` mac dinh la `Direct`
+- Neu `TransportMode = SSH Tunnel` thi `JumpHostProfile` la required
 
 ## Editor behavior
 
@@ -81,6 +85,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - `Apply entry` o edit mode phai update row dang edit.
 - Sau khi create thanh cong, form co the reset ve create mode de nhap tiep.
 - Search phai match ca `Group`, `Tags`, va `Notes`.
+- SSH transport config khong duoc chen vao CSV, chi luu trong metadata/settings layer.
 
 ## States
 

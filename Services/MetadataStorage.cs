@@ -22,6 +22,10 @@ namespace RdpManager.Services
                     entry.GroupName = null;
                     entry.Tags = null;
                     entry.Notes = null;
+                    entry.TransportMode = TransportMode.Direct;
+                    entry.JumpHostProfileId = null;
+                    entry.TunnelTargetHostOverride = null;
+                    entry.TunnelTargetPortOverride = null;
                     entry.IsFavorite = false;
                     entry.LastConnectedUtc = null;
                     entry.HealthStatus = null;
@@ -40,6 +44,10 @@ namespace RdpManager.Services
                 entry.GroupName = metadata.GroupName;
                 entry.Tags = metadata.Tags;
                 entry.Notes = metadata.Notes;
+                entry.TransportMode = metadata.GetTransportMode();
+                entry.JumpHostProfileId = metadata.JumpHostProfileId;
+                entry.TunnelTargetHostOverride = metadata.TunnelTargetHostOverride;
+                entry.TunnelTargetPortOverride = metadata.TunnelTargetPortOverride;
                 entry.IsFavorite = metadata.IsFavorite;
                 entry.LastConnectedUtc = metadata.GetLastConnectedUtc();
                 entry.HealthStatus = metadata.HealthStatus;
@@ -65,6 +73,10 @@ namespace RdpManager.Services
                         !string.IsNullOrWhiteSpace(entry.GroupName) ||
                         !string.IsNullOrWhiteSpace(entry.Tags) ||
                         !string.IsNullOrWhiteSpace(entry.Notes) ||
+                        entry.TransportMode != TransportMode.Direct ||
+                        !string.IsNullOrWhiteSpace(entry.JumpHostProfileId) ||
+                        !string.IsNullOrWhiteSpace(entry.TunnelTargetHostOverride) ||
+                        !string.IsNullOrWhiteSpace(entry.TunnelTargetPortOverride) ||
                         entry.IsFavorite ||
                         entry.LastConnectedUtc.HasValue ||
                         !string.IsNullOrWhiteSpace(entry.HealthStatus) ||
@@ -79,6 +91,10 @@ namespace RdpManager.Services
                         GroupName = entry.GroupName,
                         Tags = entry.Tags,
                         Notes = entry.Notes,
+                        TransportMode = entry.TransportMode.ToString(),
+                        JumpHostProfileId = entry.JumpHostProfileId,
+                        TunnelTargetHostOverride = entry.TunnelTargetHostOverride,
+                        TunnelTargetPortOverride = entry.TunnelTargetPortOverride,
                         IsFavorite = entry.IsFavorite,
                         LastConnectedUtc = entry.LastConnectedUtc.HasValue
                             ? entry.LastConnectedUtc.Value.ToString("o")
@@ -177,6 +193,14 @@ namespace RdpManager.Services
 
         public string Notes { get; set; }
 
+        public string TransportMode { get; set; }
+
+        public string JumpHostProfileId { get; set; }
+
+        public string TunnelTargetHostOverride { get; set; }
+
+        public string TunnelTargetPortOverride { get; set; }
+
         public bool IsFavorite { get; set; }
 
         public string LastConnectedUtc { get; set; }
@@ -230,6 +254,17 @@ namespace RdpManager.Services
         public DateTime? GetLastSyncedUtc()
         {
             return ParseDate(LastSyncedUtc);
+        }
+
+        public TransportMode GetTransportMode()
+        {
+            TransportMode parsed;
+            if (Enum.TryParse(TransportMode, true, out parsed))
+            {
+                return parsed;
+            }
+
+            return Models.TransportMode.Direct;
         }
 
         private static DateTime? ParseDate(string value)

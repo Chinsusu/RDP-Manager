@@ -11,7 +11,7 @@ namespace RdpManager.Services
     {
         private static readonly string TempDirectory = Path.Combine(Path.GetTempPath(), "RdpManager");
 
-        public static void Launch(RdpEntry entry)
+        public static Process Launch(RdpEntry entry)
         {
             if (entry == null)
             {
@@ -28,6 +28,17 @@ namespace RdpManager.Services
             var user = (entry.User ?? string.Empty).Trim();
             var password = entry.Password ?? string.Empty;
 
+            return LaunchToEndpoint(host, port, user, password);
+        }
+
+        public static Process LaunchToEndpoint(string host, int port, string user, string password)
+        {
+            host = (host ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                throw new InvalidOperationException("Host cannot be empty.");
+            }
+
             if (!string.IsNullOrWhiteSpace(user) && !string.IsNullOrWhiteSpace(password))
             {
                 StoreCredentials(host, port, user, password);
@@ -35,12 +46,18 @@ namespace RdpManager.Services
 
             var rdpFile = CreateTemporaryRdpFile(host, port, user);
 
-            Process.Start(new ProcessStartInfo
+            var process = Process.Start(new ProcessStartInfo
             {
                 FileName = "mstsc.exe",
                 Arguments = QuoteArgument(rdpFile),
                 UseShellExecute = true
             });
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to start mstsc.exe.");
+            }
+
+            return process;
         }
 
         public static void CleanupTemporaryFiles()
@@ -139,7 +156,7 @@ namespace RdpManager.Services
             return rdpFilePath;
         }
 
-        private static int ParsePort(string rawPort)
+        public static int ParsePort(string rawPort)
         {
             int port;
             if (int.TryParse((rawPort ?? string.Empty).Trim(), out port) && port > 0 && port <= 65535)

@@ -30,6 +30,7 @@ namespace RdpManager
 
         private ObservableCollection<RdpEntry> _entries = new ObservableCollection<RdpEntry>();
         private readonly ObservableCollection<RdpEntry> _pagedEntries = new ObservableCollection<RdpEntry>();
+        private readonly ObservableCollection<JumpHostProfile> _jumpHostProfiles = new ObservableCollection<JumpHostProfile>();
         private readonly ObservableCollection<string> _connectionGroupOptions = new ObservableCollection<string>();
         private string _currentFilePath;
         private bool _isDirty;
@@ -51,6 +52,7 @@ namespace RdpManager
         private StatusFilter _currentCloudminiStatusFilter = StatusFilter.All;
         private AppSection _currentAppSection = AppSection.Connections;
         private RdpEntry _editingEntry;
+        private JumpHostProfile _editingJumpHostProfile;
         private AppSettings _settings;
         private string _sessionCloudminiToken;
 
@@ -64,16 +66,20 @@ namespace RdpManager
             EntriesGrid.ItemsSource = _pagedEntries;
             CloudminiPreviewGrid.ItemsSource = _cloudminiPreviewItems;
             ConnectionsGroupFilterComboBox.ItemsSource = _connectionGroupOptions;
+            JumpHostProfilesListBox.ItemsSource = _jumpHostProfiles;
+            EntryJumpHostProfileComboBox.ItemsSource = _jumpHostProfiles;
             _currentFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "clients.csv");
             _settings = SettingsStorage.Load();
 
             ApplySettingsToUi();
+            LoadJumpHostProfiles();
             UpdateVersionText();
 
             CsvStorage.EnsureFileExists(_currentFilePath);
             LoadEntries(_currentFilePath);
             UpdateWindowTitle();
             RdpLauncher.CleanupTemporaryFiles();
+            SshTunnelManager.CleanupTemporaryFiles();
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -384,6 +390,224 @@ namespace RdpManager
             MessageBox.Show(this, "Saved Cloudmini token cleared.", "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        private void AddJumpHostProfileButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            StartNewJumpHostProfile();
+        }
+
+        private void DeleteJumpHostProfileButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_editingJumpHostProfile == null || string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id))
+            {
+                MessageBox.Show(this, "Select a jump host profile to delete.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                this,
+                string.Format("Delete jump host profile '{0}'?", _editingJumpHostProfile.DisplayName),
+                "Jump Hosts",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId))
+            {
+                SecretVault.DeleteSecret(_editingJumpHostProfile.SecretRefId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_editingJumpHostProfile.PassphraseSecretRefId))
+            {
+                SecretVault.DeleteSecret(_editingJumpHostProfile.PassphraseSecretRefId);
+            }
+
+            var remainingProfiles = _jumpHostProfiles
+                .Where(profile => !string.Equals(profile.Id, _editingJumpHostProfile.Id, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            JumpHostProfileStorage.Save(remainingProfiles);
+
+            foreach (var entry in _entries.Where(entry => string.Equals(entry.JumpHostProfileId, _editingJumpHostProfile.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                entry.JumpHostProfileId = string.Empty;
+                if (entry.TransportMode == TransportMode.SshTunnel)
+                {
+                    entry.TransportMode = TransportMode.Direct;
+                }
+            }
+
+            MetadataStorage.Save(_currentFilePath, _entries);
+            LoadJumpHostProfiles();
+            StartNewJumpHostProfile();
+            if (_editingEntry != null)
+            {
+                PopulateForm(_editingEntry);
+            }
+            UpdateSettingsSummary();
+        }
+
+        private void SaveJumpHostProfileButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var profile = BuildJumpHostProfileFromEditor();
+            if (profile == null)
+            {
+                return;
+            }
+
+            if (_editingJumpHostProfile != null &&
+                !string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId) &&
+                profile.AuthMode == JumpHostAuthMode.Agent)
+            {
+                SecretVault.DeleteSecret(_editingJumpHostProfile.SecretRefId);
+                profile.SecretRefId = string.Empty;
+                profile.ImportedKeyLabel = string.Empty;
+            }
+
+            var profiles = _jumpHostProfiles.ToList();
+            var existingIndex = profiles.FindIndex(item => string.Equals(item.Id, profile.Id, StringComparison.OrdinalIgnoreCase));
+            if (existingIndex >= 0)
+            {
+                profiles[existingIndex] = profile;
+            }
+            else
+            {
+                profiles.Add(profile);
+            }
+
+            JumpHostProfileStorage.Save(profiles);
+            LoadJumpHostProfiles(profile.Id);
+            UpdateSettingsSummary();
+            MessageBox.Show(this, "Jump host profile saved.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ImportJumpHostKeyButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_editingJumpHostProfile == null || string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id))
+            {
+                MessageBox.Show(this, "Save the jump host profile first, then import a key.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (GetSelectedJumpHostAuthMode() == JumpHostAuthMode.Agent)
+            {
+                MessageBox.Show(this, "Agent mode does not store a private key in the app.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new OpenFileDialog
+            {
+                Filter = "SSH private keys (*.*)|*.*",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            var keyContent = File.ReadAllText(dialog.FileName);
+            if (string.IsNullOrWhiteSpace(keyContent))
+            {
+                MessageBox.Show(this, "Selected key file is empty.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var secretId = SecretVault.SaveSecret(_editingJumpHostProfile.SecretRefId, SecretKind.SshPrivateKey, keyContent);
+            _editingJumpHostProfile.SecretRefId = secretId;
+            _editingJumpHostProfile.ImportedKeyLabel = Path.GetFileName(dialog.FileName);
+
+            SaveJumpHostProfileFromCurrentSelection();
+            MessageBox.Show(this, "Private key stored securely for this profile.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ClearJumpHostKeyButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_editingJumpHostProfile == null || string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id))
+            {
+                MessageBox.Show(this, "Select a saved jump host profile first.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId))
+            {
+                MessageBox.Show(this, "This profile does not have a stored private key.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            SecretVault.DeleteSecret(_editingJumpHostProfile.SecretRefId);
+            _editingJumpHostProfile.SecretRefId = string.Empty;
+            _editingJumpHostProfile.ImportedKeyLabel = string.Empty;
+
+            SaveJumpHostProfileFromCurrentSelection();
+        }
+
+        private void TestJumpHostProfileButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var profile = BuildJumpHostProfileFromEditor();
+            if (profile == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                SetJumpHostTestStatus("Testing SSH tunnel profile...", new SolidColorBrush(Color.FromRgb(105, 120, 142)));
+                var message = SshTunnelManager.TestProfile(profile);
+                SetJumpHostTestStatus(message, new SolidColorBrush(Color.FromRgb(47, 125, 50)));
+                MessageBox.Show(this, message, "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                SetJumpHostTestStatus(ex.Message, new SolidColorBrush(Color.FromRgb(179, 56, 56)));
+                MessageBox.Show(this, ex.Message, "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private void JumpHostProfilesListBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var profile = JumpHostProfilesListBox.SelectedItem as JumpHostProfile;
+            if (profile == null)
+            {
+                return;
+            }
+
+            PopulateJumpHostEditor(profile);
+        }
+
+        private void JumpHostAuthModeComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateJumpHostEditorState();
+        }
+
+        private void EntryTransportComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isPopulatingForm)
+            {
+                return;
+            }
+
+            _editorDirty = true;
+            UpdateTransportEditorState();
+        }
+
+        private void EntryJumpHostProfileComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isPopulatingForm)
+            {
+                return;
+            }
+
+            _editorDirty = true;
+        }
+
         private void BackToConnectionsButton_OnClick(object sender, RoutedEventArgs e)
         {
             SetNavigationFilter(NavigationFilter.AllConnections);
@@ -537,8 +761,10 @@ namespace RdpManager
             if (!ConfirmDiscardIfNeeded())
             {
                 e.Cancel = true;
+                return;
             }
 
+            SshTunnelManager.ShutdownActiveSessions();
             base.OnClosing(e);
         }
 
@@ -607,6 +833,10 @@ namespace RdpManager
             var port = NormalizePort(PortTextBox.Text);
             var user = (UserTextBox.Text ?? string.Empty).Trim();
             var password = PasswordBox.Password ?? string.Empty;
+            var transportMode = GetSelectedEntryTransportMode();
+            var jumpHostProfileId = GetSelectedJumpHostProfileId();
+            var tunnelTargetHostOverride = string.Empty;
+            var tunnelTargetPortOverride = string.Empty;
             var groupName = (GroupTextBox.Text ?? string.Empty).Trim();
             var tags = (TagsTextBox.Text ?? string.Empty).Trim();
             var notes = (NotesTextBox.Text ?? string.Empty).Trim();
@@ -615,6 +845,13 @@ namespace RdpManager
             {
                 MessageBox.Show(this, "Host cannot be empty.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
                 HostTextBox.Focus();
+                return null;
+            }
+
+            if (transportMode == TransportMode.SshTunnel && string.IsNullOrWhiteSpace(jumpHostProfileId))
+            {
+                MessageBox.Show(this, "Select a jump host profile when transport is SSH Tunnel.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                EntryJumpHostProfileComboBox.Focus();
                 return null;
             }
 
@@ -631,6 +868,10 @@ namespace RdpManager
             entry.Port = port;
             entry.User = user;
             entry.Password = password;
+            entry.TransportMode = transportMode;
+            entry.JumpHostProfileId = jumpHostProfileId;
+            entry.TunnelTargetHostOverride = tunnelTargetHostOverride;
+            entry.TunnelTargetPortOverride = tunnelTargetPortOverride;
             entry.GroupName = groupName;
             entry.Tags = tags;
             entry.Notes = notes;
@@ -652,11 +893,14 @@ namespace RdpManager
             PortTextBox.Text = string.IsNullOrWhiteSpace(entry.Port) ? "3389" : entry.Port;
             UserTextBox.Text = entry.User;
             PasswordBox.Password = entry.Password ?? string.Empty;
+            SetComboSelectedTag(EntryTransportComboBox, entry.TransportMode == TransportMode.SshTunnel ? "SshTunnel" : "Direct");
+            EntryJumpHostProfileComboBox.SelectedItem = FindJumpHostProfile(entry.JumpHostProfileId);
             GroupTextBox.Text = entry.GroupName ?? string.Empty;
             TagsTextBox.Text = entry.Tags ?? string.Empty;
             NotesTextBox.Text = entry.Notes ?? string.Empty;
             _isPopulatingForm = false;
             _editorDirty = false;
+            UpdateTransportEditorState();
         }
 
         private void StartNewEntry()
@@ -670,12 +914,15 @@ namespace RdpManager
             PortTextBox.Text = "3389";
             UserTextBox.Text = string.Empty;
             PasswordBox.Password = string.Empty;
+            SetComboSelectedTag(EntryTransportComboBox, "Direct");
+            EntryJumpHostProfileComboBox.SelectedItem = null;
             GroupTextBox.Text = string.Empty;
             TagsTextBox.Text = string.Empty;
             NotesTextBox.Text = string.Empty;
             _isPopulatingForm = false;
             _editorDirty = false;
             HostTextBox.Focus();
+            UpdateTransportEditorState();
             UpdateSummary();
         }
 
@@ -700,6 +947,7 @@ namespace RdpManager
             SettingsOverwritePasswordCheckBox.IsChecked = _settings.OverwritePasswordFromProvider;
             SettingsImportOnlyOnlineCheckBox.IsChecked = _settings.ImportOnlyOnline;
 
+            SetComboSelectedTag(EntryTransportComboBox, "Direct");
             UpdateSettingsSummary();
         }
 
@@ -756,6 +1004,8 @@ namespace RdpManager
                 !string.Equals(NormalizePort(_editingEntry.Port), NormalizePort(PortTextBox.Text), StringComparison.Ordinal) ||
                 !string.Equals(_editingEntry.User ?? string.Empty, UserTextBox.Text ?? string.Empty, StringComparison.Ordinal) ||
                 !string.Equals(_editingEntry.Password ?? string.Empty, PasswordBox.Password ?? string.Empty, StringComparison.Ordinal) ||
+                _editingEntry.TransportMode != GetSelectedEntryTransportMode() ||
+                !string.Equals(_editingEntry.JumpHostProfileId ?? string.Empty, GetSelectedJumpHostProfileId() ?? string.Empty, StringComparison.Ordinal) ||
                 !string.Equals(_editingEntry.GroupName ?? string.Empty, GroupTextBox.Text ?? string.Empty, StringComparison.Ordinal) ||
                 !string.Equals(_editingEntry.Tags ?? string.Empty, TagsTextBox.Text ?? string.Empty, StringComparison.Ordinal) ||
                 !string.Equals(_editingEntry.Notes ?? string.Empty, NotesTextBox.Text ?? string.Empty, StringComparison.Ordinal);
@@ -846,6 +1096,237 @@ namespace RdpManager
             }
         }
 
+        private void LoadJumpHostProfiles(string selectedProfileId = null)
+        {
+            var profiles = JumpHostProfileStorage.Load();
+            _jumpHostProfiles.Clear();
+            foreach (var profile in profiles)
+            {
+                _jumpHostProfiles.Add(profile);
+            }
+
+            if (!string.IsNullOrWhiteSpace(selectedProfileId))
+            {
+                var selectedProfile = FindJumpHostProfile(selectedProfileId);
+                if (JumpHostProfilesListBox != null)
+                {
+                    JumpHostProfilesListBox.SelectedItem = selectedProfile;
+                }
+
+                if (selectedProfile != null)
+                {
+                    PopulateJumpHostEditor(selectedProfile);
+                }
+            }
+            else if (_editingJumpHostProfile == null)
+            {
+                StartNewJumpHostProfile();
+            }
+
+            UpdateTransportEditorState();
+            UpdateJumpHostEditorState();
+            UpdateSettingsSummary();
+        }
+
+        private void PopulateJumpHostEditor(JumpHostProfile profile)
+        {
+            _editingJumpHostProfile = profile;
+            JumpHostProfileNameTextBox.Text = profile == null ? string.Empty : profile.Name ?? string.Empty;
+            JumpHostHostTextBox.Text = profile == null ? string.Empty : profile.Host ?? string.Empty;
+            JumpHostPortTextBox.Text = profile == null ? "22" : NormalizePositiveNumber(profile.Port, 22).ToString();
+            JumpHostUserTextBox.Text = profile == null ? string.Empty : profile.User ?? string.Empty;
+            SetComboSelectedTag(JumpHostAuthModeComboBox, profile != null && profile.AuthMode == JumpHostAuthMode.Agent ? "Agent" : "EmbeddedPrivateKey");
+            JumpHostHostKeyFingerprintTextBox.Text = profile == null ? string.Empty : profile.HostKeyFingerprint ?? string.Empty;
+            JumpHostConnectTimeoutTextBox.Text = profile == null ? "10" : NormalizePositiveNumber(profile.ConnectTimeoutSeconds, 10).ToString();
+            JumpHostKeepAliveTextBox.Text = profile == null ? "30" : NormalizePositiveNumber(profile.KeepAliveSeconds, 30).ToString();
+            SetJumpHostTestStatus("SSH test not run yet.", new SolidColorBrush(Color.FromRgb(105, 120, 142)));
+            UpdateJumpHostEditorState();
+        }
+
+        private void StartNewJumpHostProfile()
+        {
+            if (JumpHostProfilesListBox != null)
+            {
+                JumpHostProfilesListBox.SelectedItem = null;
+            }
+
+            _editingJumpHostProfile = null;
+            JumpHostProfileNameTextBox.Text = string.Empty;
+            JumpHostHostTextBox.Text = string.Empty;
+            JumpHostPortTextBox.Text = "22";
+            JumpHostUserTextBox.Text = string.Empty;
+            SetComboSelectedTag(JumpHostAuthModeComboBox, "EmbeddedPrivateKey");
+            JumpHostHostKeyFingerprintTextBox.Text = string.Empty;
+            JumpHostConnectTimeoutTextBox.Text = "10";
+            JumpHostKeepAliveTextBox.Text = "30";
+            SetJumpHostTestStatus("SSH test not run yet.", new SolidColorBrush(Color.FromRgb(105, 120, 142)));
+            UpdateJumpHostEditorState();
+        }
+
+        private JumpHostProfile BuildJumpHostProfileFromEditor()
+        {
+            var host = (JumpHostHostTextBox.Text ?? string.Empty).Trim();
+            var user = (JumpHostUserTextBox.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                MessageBox.Show(this, "Jump host cannot be empty.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Warning);
+                JumpHostHostTextBox.Focus();
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(user))
+            {
+                MessageBox.Show(this, "Jump host user cannot be empty.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Warning);
+                JumpHostUserTextBox.Focus();
+                return null;
+            }
+
+            var profile = _editingJumpHostProfile == null
+                ? new JumpHostProfile()
+                : new JumpHostProfile
+                {
+                    Id = _editingJumpHostProfile.Id,
+                    SecretRefId = _editingJumpHostProfile.SecretRefId,
+                    PassphraseSecretRefId = _editingJumpHostProfile.PassphraseSecretRefId,
+                    ImportedKeyLabel = _editingJumpHostProfile.ImportedKeyLabel
+                };
+
+            profile.Id = string.IsNullOrWhiteSpace(profile.Id) ? Guid.NewGuid().ToString("N") : profile.Id;
+            profile.Name = (JumpHostProfileNameTextBox.Text ?? string.Empty).Trim();
+            profile.Host = host;
+            profile.Port = NormalizePositiveNumber(JumpHostPortTextBox.Text, 22);
+            profile.User = user;
+            profile.AuthMode = GetSelectedJumpHostAuthMode();
+            profile.UseAgent = profile.AuthMode == JumpHostAuthMode.Agent;
+            profile.StrictHostKeyCheckingMode = "Ask";
+            profile.HostKeyFingerprint = (JumpHostHostKeyFingerprintTextBox.Text ?? string.Empty).Trim();
+            profile.ConnectTimeoutSeconds = NormalizePositiveNumber(JumpHostConnectTimeoutTextBox.Text, 10);
+            profile.KeepAliveSeconds = NormalizePositiveNumber(JumpHostKeepAliveTextBox.Text, 30);
+            if (profile.AuthMode == JumpHostAuthMode.Agent)
+            {
+                profile.SecretRefId = string.Empty;
+                profile.ImportedKeyLabel = string.Empty;
+            }
+
+            return profile;
+        }
+
+        private void SaveJumpHostProfileFromCurrentSelection()
+        {
+            if (_editingJumpHostProfile == null || string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id))
+            {
+                return;
+            }
+
+            var profiles = _jumpHostProfiles.ToList();
+            var existingIndex = profiles.FindIndex(profile => string.Equals(profile.Id, _editingJumpHostProfile.Id, StringComparison.OrdinalIgnoreCase));
+            if (existingIndex >= 0)
+            {
+                profiles[existingIndex] = _editingJumpHostProfile;
+            }
+            else
+            {
+                profiles.Add(_editingJumpHostProfile);
+            }
+
+            JumpHostProfileStorage.Save(profiles);
+            LoadJumpHostProfiles(_editingJumpHostProfile.Id);
+            UpdateSettingsSummary();
+        }
+
+        private void UpdateJumpHostEditorState()
+        {
+            var authMode = GetSelectedJumpHostAuthMode();
+            var hasSelectedProfile = _editingJumpHostProfile != null && !string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id);
+            var hasStoredKey = hasSelectedProfile && !string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId) && SecretVault.HasSecret(_editingJumpHostProfile.SecretRefId);
+
+            if (JumpHostKeyStatusTextBlock != null)
+            {
+                if (authMode == JumpHostAuthMode.Agent)
+                {
+                    JumpHostKeyStatusTextBlock.Text = "Agent mode selected. The app expects ssh-agent to hold the identity.";
+                }
+                else if (hasStoredKey)
+                {
+                    JumpHostKeyStatusTextBlock.Text = string.IsNullOrWhiteSpace(_editingJumpHostProfile.ImportedKeyLabel)
+                        ? "Stored securely"
+                        : "Stored securely: " + _editingJumpHostProfile.ImportedKeyLabel;
+                }
+                else
+                {
+                    JumpHostKeyStatusTextBlock.Text = hasSelectedProfile
+                        ? "No private key stored for this profile."
+                        : "Save the profile first, then import a private key.";
+                }
+            }
+
+            if (ImportJumpHostKeyButton != null)
+            {
+                ImportJumpHostKeyButton.IsEnabled = authMode == JumpHostAuthMode.EmbeddedPrivateKey && hasSelectedProfile;
+            }
+
+            if (ClearJumpHostKeyButton != null)
+            {
+                ClearJumpHostKeyButton.IsEnabled = authMode == JumpHostAuthMode.EmbeddedPrivateKey && hasStoredKey;
+            }
+
+            if (TestJumpHostProfileButton != null)
+            {
+                TestJumpHostProfileButton.IsEnabled = true;
+            }
+        }
+
+        private void SetJumpHostTestStatus(string message, Brush brush)
+        {
+            if (JumpHostTestStatusTextBlock == null)
+            {
+                return;
+            }
+
+            JumpHostTestStatusTextBlock.Text = string.IsNullOrWhiteSpace(message) ? "SSH test not run yet." : message;
+            JumpHostTestStatusTextBlock.Foreground = brush ?? new SolidColorBrush(Color.FromRgb(105, 120, 142));
+        }
+
+        private void UpdateTransportEditorState()
+        {
+            if (EntryJumpHostProfileComboBox != null)
+            {
+                EntryJumpHostProfileComboBox.IsEnabled = GetSelectedEntryTransportMode() == TransportMode.SshTunnel;
+            }
+        }
+
+        private JumpHostProfile FindJumpHostProfile(string profileId)
+        {
+            if (string.IsNullOrWhiteSpace(profileId))
+            {
+                return null;
+            }
+
+            return _jumpHostProfiles.FirstOrDefault(profile => string.Equals(profile.Id, profileId.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        private TransportMode GetSelectedEntryTransportMode()
+        {
+            var selectedTag = GetSelectedComboTag(EntryTransportComboBox);
+            return string.Equals(selectedTag, "SshTunnel", StringComparison.OrdinalIgnoreCase)
+                ? TransportMode.SshTunnel
+                : TransportMode.Direct;
+        }
+
+        private string GetSelectedJumpHostProfileId()
+        {
+            var selectedProfile = EntryJumpHostProfileComboBox == null ? null : EntryJumpHostProfileComboBox.SelectedItem as JumpHostProfile;
+            return selectedProfile == null ? string.Empty : selectedProfile.Id ?? string.Empty;
+        }
+
+        private JumpHostAuthMode GetSelectedJumpHostAuthMode()
+        {
+            var selectedTag = GetSelectedComboTag(JumpHostAuthModeComboBox);
+            return string.Equals(selectedTag, "Agent", StringComparison.OrdinalIgnoreCase)
+                ? JumpHostAuthMode.Agent
+                : JumpHostAuthMode.EmbeddedPrivateKey;
+        }
+
         private static string NormalizePort(string rawPort)
         {
             int port;
@@ -855,6 +1336,14 @@ namespace RdpManager
             }
 
             return "3389";
+        }
+
+        private static int NormalizePositiveNumber(object rawValue, int defaultValue)
+        {
+            int parsed;
+            return int.TryParse(Convert.ToString(rawValue), out parsed) && parsed > 0
+                ? parsed
+                : defaultValue;
         }
 
         private static string GetInitialDirectory(string path)
@@ -870,6 +1359,8 @@ namespace RdpManager
                 !string.IsNullOrWhiteSpace(HostTextBox.Text) ||
                 !string.IsNullOrWhiteSpace(UserTextBox.Text) ||
                 !string.IsNullOrWhiteSpace(PasswordBox.Password) ||
+                GetSelectedEntryTransportMode() != TransportMode.Direct ||
+                !string.IsNullOrWhiteSpace(GetSelectedJumpHostProfileId()) ||
                 !string.IsNullOrWhiteSpace(GroupTextBox.Text) ||
                 !string.IsNullOrWhiteSpace(TagsTextBox.Text) ||
                 !string.IsNullOrWhiteSpace(NotesTextBox.Text) ||
@@ -921,6 +1412,8 @@ namespace RdpManager
             UpdateNavigationVisuals();
             UpdateViewState();
             UpdateFilterSelectors();
+            UpdateTransportEditorState();
+            UpdateJumpHostEditorState();
 
             if (_currentAppSection == AppSection.Connections)
             {
@@ -996,6 +1489,19 @@ namespace RdpManager
             entry.LastConnectedUtc = DateTime.UtcNow;
             MetadataStorage.Save(_currentFilePath, _entries);
             RefreshEntriesView();
+
+            if (entry.TransportMode == TransportMode.SshTunnel)
+            {
+                var profile = FindJumpHostProfile(entry.JumpHostProfileId);
+                if (profile == null)
+                {
+                    throw new InvalidOperationException("The selected jump host profile could not be found.");
+                }
+
+                SshTunnelManager.Launch(entry, profile);
+                return;
+            }
+
             RdpLauncher.Launch(entry);
         }
 
@@ -1540,9 +2046,24 @@ namespace RdpManager
 
             CurrentCsvPathTextBlock.Text = "CSV: " + (_currentFilePath ?? "-");
             SettingsPathTextBlock.Text = "Settings: " + SettingsStorage.GetSettingsPath();
+            if (JumpHostsPathTextBlock != null)
+            {
+                JumpHostsPathTextBlock.Text = "Jump hosts: " + JumpHostProfileStorage.GetProfilesPath();
+            }
+
+            if (SecretVaultPathTextBlock != null)
+            {
+                SecretVaultPathTextBlock.Text = "Secrets: " + SecretVault.GetSecretsPath();
+            }
+
             SavedTokenStatusTextBlock.Text = _settings != null && _settings.RememberCloudminiToken && !string.IsNullOrWhiteSpace(_settings.EncryptedCloudminiToken)
                 ? "Saved token: stored for current Windows user"
                 : "Saved token: not stored";
+            if (JumpHostCountTextBlock != null)
+            {
+                JumpHostCountTextBlock.Text = string.Format("Jump host profiles: {0}", _jumpHostProfiles.Count);
+            }
+
             if (AppVersionTextBlock != null)
             {
                 AppVersionTextBlock.Text = "Version: " + GetDisplayVersion();

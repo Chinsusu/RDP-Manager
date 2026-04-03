@@ -4,12 +4,21 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 
 ## [Unreleased]
 
+### Added
+
+- Them bo docs thiet ke `SSH Tunnel Transport`, bao gom transport mode, jump host profile, security model, va checklist test.
+- Them code-ready spec cho `Jump Host Profile`, `SecretVault`, `TempKeyMaterializer`, va connect flow 1-click qua SSH tunnel.
+- Them backend `SSH Tunnel` milestone 2: app mo `ssh.exe` an, doi local forward san sang, roi launch `mstsc` qua `127.0.0.1:<localPort>`.
+- Them protected `SecretVault`, `TempKeyMaterializer`, `JumpHostProfileStorage`, va `SshTunnelManager`.
+- Them `Test SSH` cho `Jump Host Profile`, chay bang cung auth material va forward backend nhu flow tunnel that.
+
 ### Changed
 
 - Local filter toolbar doi tu chip sang dropdown compact de tiet kiem ngang va de doc hon khi co them `Group`.
 - Sidebar duoc chia lai thanh cac section `Search`, `Browse`, `Actions`, `Settings` de nhin gon hon.
 - App gio dung custom title bar lien voi UI thay cho native title bar, kem nut `min / max / close` lon hon theo huong Win 11.
 - Bang `Saved connections` khong con hien cot `HostName`; thu tu cot duoc doi de `Password` dung ngay sau `User`.
+- `Connect` cho entry `SSH Tunnel` gio chay flow tunnel that thay vi chi hien placeholder message.
 
 ## [1.2.0-phase2-local-ops] - 2026-04-02
 

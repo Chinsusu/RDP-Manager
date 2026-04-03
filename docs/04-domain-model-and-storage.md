@@ -11,6 +11,10 @@ Core fields:
 - Port
 - User
 - Password
+- TransportMode
+- JumpHostProfileId
+- TunnelTargetHostOverride
+- TunnelTargetPortOverride
 - GroupName
 - Tags
 - Notes
@@ -75,12 +79,21 @@ Raw provider DTO:
 
 - `%AppData%\\RdpManager\\settings.user.json`
 - `%AppData%\\RdpManager\\logs\\`
+- `%AppData%\\RdpManager\\jump-hosts.user.json`
+- `%AppData%\\RdpManager\\secrets.user.json`
 
 ## Storage ownership
 
 - CSV chi chua RDP credential data can ban
 - `meta.xml` chua local metadata (`favorite`, `recent`, `group`, `tags`, `notes`, `health`) va provider metadata
 - user settings chua token, sync preference, UI preference
+- jump host profiles va SSH auth material phai nam trong protected store / user settings layer, khong duoc nam trong CSV
+
+## SSH secret storage design
+
+- `jump-hosts.user.json` chi chua metadata profile
+- `secrets.user.json` chua blob da duoc ma hoa bang user-scoped protected storage
+- app co the materialize private key ra temp file khi connect, nhung khong luu plaintext lau dai tren disk
 
 ## Why not put everything into CSV
 
@@ -126,3 +139,5 @@ Neu user da sua HostName local:
 - CSV 5 cot moi la format chuan hien tai
 - Metadata migration phai backward-compatible
 - `Notes`, `Group`, `Tags`, va `Health` khong lam thay doi format CSV; chung chi song trong `meta.xml`
+- `TransportMode` co the duoc ghi vao metadata neu can backward-compatible voi CSV hien tai
+- `JumpHostProfileId` va tunnel settings phai song ngoai CSV de tranh lo SSH config

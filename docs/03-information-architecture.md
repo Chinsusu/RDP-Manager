@@ -36,6 +36,7 @@ View nay khong phai chi la filter. No co workflow rieng: auth, fetch, preview, m
 - Settings
 
 View nay quan ly preference, storage path, token, sync defaults.
+View nay sau do cung quan ly `Jump Host Profile`.
 
 ## Screen composition rule
 
@@ -77,6 +78,7 @@ De de them bot sua tab:
 - Filter state thuoc current tab/view-model
 - Cloudmini auth state thuoc integration settings
 - Sync preview state thuoc Cloudmini Sync module
+- Jump host state thuoc app settings / protected storage layer, khong thuoc CSV
 
 ## Layout consistency rules
 
@@ -88,4 +90,5 @@ De de them bot sua tab:
 - Button destructive phai co style do nhat quan
 - Nguon du lieu external phai co nhan provider/source
 - Local-only metadata (`Notes`, `Group`, `Tags`, `Health`) phai song ngoai CSV de khong lam vo import/export flow
+- SSH transport profile va auth material phai song ngoai CSV de khong lo secret va de profile co the duoc share lai cho nhieu entry
 - Title bar custom neu duoc dung phai van giu du resize, maximize, minimize, va drag window nhu native window
