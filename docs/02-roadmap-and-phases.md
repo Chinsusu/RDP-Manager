@@ -81,7 +81,7 @@ Acceptance criteria:
 
 ## Phase 3: Cloudmini actions
 
-Status: optional
+Status: optional backlog
 
 Target:
 
@@ -97,7 +97,49 @@ Acceptance criteria:
 - Co loading state
 - Co thong bao thanh cong / that bai
 
-## Phase 4: Hardening
+## Phase 4: SSH tunnel transport
+
+Status: in progress, milestone 2 da implemented
+
+Target:
+
+- Them `Transport mode`: `Direct | SSH Tunnel`
+- Cho phep nhieu connection dung chung `Jump Host Profile`
+- Mo `mstsc` thong qua local forwarded port
+- Luu SSH config ngoai CSV
+
+Deliverables:
+
+- `Jump Hosts` section trong Settings
+- `Transport` field trong Entry editor
+- Tunnel lifecycle manager
+- Tunnel cleanup khi `mstsc` dong
+- Secret storage cho SSH auth material
+- `Test SSH` cho jump host profile
+
+Current implemented scope:
+
+- Them `Transport = Direct | SSH Tunnel` tren local entry
+- Them `Jump Hosts` editor trong Settings
+- Them `JumpHostProfileStorage`, `SecretVault`, `TempKeyMaterializer`
+- Them `SshTunnelManager` mo `ssh.exe` an va cleanup khi `mstsc` dong
+- Them `Test SSH` bang flow forward ngan de verify auth + forwarding
+
+Current limitations:
+
+- Chua co shared SSH master / multiplexing
+- Chua expose target override UI cho tunnel target host/port
+- Host key fingerprint moi duoc luu, chua duoc enforce trong command builder
+
+Acceptance criteria:
+
+- User co the connect 1 RDP entry qua jump host bang 1 click
+- 1 profile co the dung lai cho nhieu entry
+- `Direct` mode van hoat dong nhu cu
+- SSH secret khong nam trong CSV
+- Tunnel loi khong lam crash app
+
+## Phase 5: Hardening
 
 Status: backlog
 
@@ -118,6 +160,8 @@ Target:
 5. Implement sync preview and merge.
 6. Manual QA on real Cloudmini account.
 7. Tach bot logic khoi `MainWindow.xaml.cs`, retarget len `.NET Framework 4.8.1`, roi release Phase 2.
+8. Implement `SSH Tunnel` transport voi V1 architecture.
+9. Hardening, logging, va packaging.
 
 ## Change control rule
 

@@ -10,6 +10,10 @@ namespace RdpManager.Models
         private string _port = "3389";
         private string _user;
         private string _password;
+        private TransportMode _transportMode;
+        private string _jumpHostProfileId;
+        private string _tunnelTargetHostOverride;
+        private string _tunnelTargetPortOverride;
         private string _groupName;
         private string _tags;
         private string _notes;
@@ -111,6 +115,67 @@ namespace RdpManager.Models
             get { return string.IsNullOrEmpty(Password) ? string.Empty : "********"; }
         }
 
+        public TransportMode TransportMode
+        {
+            get { return _transportMode; }
+            set
+            {
+                if (_transportMode == value)
+                {
+                    return;
+                }
+
+                _transportMode = value;
+                OnPropertyChanged("TransportMode");
+                OnPropertyChanged("TransportLabel");
+            }
+        }
+
+        public string JumpHostProfileId
+        {
+            get { return _jumpHostProfileId; }
+            set
+            {
+                if (_jumpHostProfileId == value)
+                {
+                    return;
+                }
+
+                _jumpHostProfileId = value;
+                OnPropertyChanged("JumpHostProfileId");
+            }
+        }
+
+        public string TunnelTargetHostOverride
+        {
+            get { return _tunnelTargetHostOverride; }
+            set
+            {
+                if (_tunnelTargetHostOverride == value)
+                {
+                    return;
+                }
+
+                _tunnelTargetHostOverride = value;
+                OnPropertyChanged("TunnelTargetHostOverride");
+            }
+        }
+
+        public string TunnelTargetPortOverride
+        {
+            get { return _tunnelTargetPortOverride; }
+            set
+            {
+                if (_tunnelTargetPortOverride == value)
+                {
+                    return;
+                }
+
+                _tunnelTargetPortOverride = value;
+                OnPropertyChanged("TunnelTargetPortOverride");
+            }
+        }
+
         public string GroupName
         {
             get { return _groupName; }
@@ -159,6 +224,11 @@ namespace RdpManager.Models
         public string PlatformLabel
         {
             get { return ConnectionClassifier.GetPlatformLabel(Port, User); }
+        }
+
+        public string TransportLabel
+        {
+            get { return TransportMode == TransportMode.SshTunnel ? "SSH Tunnel" : "Direct"; }
         }
 
         public bool IsFavorite

@@ -6,7 +6,7 @@ Bo tai lieu nay mo ta du an theo cach lam viec thuc te, de co the tiep tuc phat 
 
 - Phase 1 da co: WPF GUI quan ly danh sach RDP bang CSV.
 - App hien tai da ho tro: CRUD local entries, Favorites, Recent, search, launch `mstsc`, Cloudmini token test, fetch VPS, sync preview, sync vao local list.
-- App hien tai da co them: local va Cloudmini filter toolbar dang dropdown compact, pagination local list, click-to-copy cho Host/User/Password, explicit-connect only, local `Notes/Group/Tags`, health check co ban cho local list, custom title bar lien UI, va sidebar da duoc section hoa.
+- App hien tai da co them: local va Cloudmini filter toolbar dang dropdown compact, pagination local list, click-to-copy cho Host/User/Password, explicit-connect only, local `Notes/Group/Tags`, health check co ban cho local list, custom title bar lien UI, va sidebar da duoc section hoa, cung voi `SSH Tunnel` backend dung chung `Jump Host Profile`.
 - Phase 2 da o muc MVP dang hoat dong, docs nay mo ta ca hien trang va huong mo rong tiep theo.
 - Technical target cho Phase 2: retarget len `.NET Framework 4.8.1`.
 
@@ -36,6 +36,8 @@ Bo tai lieu nay mo ta du an theo cach lam viec thuc te, de co the tiep tuc phat 
   Thiet ke tich hop Cloudmini API.
 - [06-technical-architecture.md](./06-technical-architecture.md)
   Kien truc code, folder structure, service boundary, migration note.
+- [09-ssh-tunnel-transport.md](./09-ssh-tunnel-transport.md)
+  Thiet ke ky thuat cho transport `SSH Tunnel`, jump host profile, va security model.
 - [07-coding-standards.md](./07-coding-standards.md)
   Coding standard, XAML standard, naming, security rules.
 - [08-testing-release-and-operations.md](./08-testing-release-and-operations.md)
@@ -45,4 +47,5 @@ Bo tai lieu nay mo ta du an theo cach lam viec thuc te, de co the tiep tuc phat 
 
 - Khi them tab moi: cap nhat `ui/sitemap.md`, tao them `ui/tab-<name>.md`, neu co domain moi thi cap nhat `04-domain-model-and-storage.md`.
 - Khi them integration moi: tao doc tuong tu `05-cloudmini-api-integration.md`.
+- Khi them transport moi: tao doc rieng tuong tu `09-ssh-tunnel-transport.md` va cap nhat `04`, `06`, `08`.
 - Khi doi architecture: cap nhat `06-technical-architecture.md` va `07-coding-standards.md` truoc khi code.

@@ -41,6 +41,7 @@ Dung 3 lop test:
 
 - Cloudmini loi khong duoc lam hong local list
 - Metadata file hong van phai load duoc CSV
+- Jump host settings hong khong duoc chan flow `Direct`
 - Favorites/Recent van dung sau sync
 - Connect sau sync van mo duoc `mstsc`
 - Local list phan trang dung `10 items/page`
@@ -52,6 +53,22 @@ Dung 3 lop test:
 - Dropdown filter local list va Cloudmini Sync phai mo/chon duoc binh thuong
 - Custom title bar phai drag, maximize, minimize, close dung nhu native window
 
+## SSH tunnel manual checklist
+
+- Tao jump host profile moi
+- Sua jump host profile
+- Xoa jump host profile
+- Test SSH thanh cong
+- Test SSH that bai
+- Test SSH fail ro rang khi chua import key o `Embedded key`
+- Test SSH pass o `Agent` neu may co `ssh-agent` va identity hop le
+- Gan 1 profile cho nhieu `RdpEntry`
+- Connect 1 entry qua `SSH Tunnel`
+- Dong `mstsc` va verify tunnel duoc cleanup
+- `Direct` mode van connect dung sau khi co profile SSH
+- SSH secret khong nam trong CSV
+- App restart khong de tunnel zombie do app tao ra
+
 ## Release checklist
 
 1. Build Release thanh cong.
@@ -60,6 +77,7 @@ Dung 3 lop test:
 4. Verify token storage khong nam trong CSV.
 5. Verify log folder create duoc.
 6. Cap nhat docs version neu doi scope lon.
+7. Neu co `SSH Tunnel`, verify startup cleanup va tunnel cleanup khi dong `mstsc`.
 
 ## Support diagnostics
 
