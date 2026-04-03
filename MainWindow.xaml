@@ -507,7 +507,8 @@
         </Style>
     </Window.Resources>
 
-    <Border Background="{StaticResource WindowBrush}"
+    <Border x:Name="WindowFrameBorder"
+            Background="{StaticResource WindowBrush}"
             BorderBrush="{StaticResource CardBorderBrush}"
             BorderThickness="1">
         <Grid Background="{StaticResource WindowBrush}">
@@ -793,6 +794,9 @@
                                            CanUserAddRows="False"
                                            IsReadOnly="True"
                                            MinHeight="0"
+                                           ScrollViewer.CanContentScroll="False"
+                                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                           ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                            SelectionMode="Single"
                                            SelectionUnit="FullRow"
                                            SelectionChanged="EntriesGrid_OnSelectionChanged">
@@ -892,7 +896,7 @@
                                            Text="No connections to show."
                                            Visibility="Collapsed" />
                             </Grid>
-                            <Grid Grid.Row="2" Margin="0,16,0,0">
+                            <Grid Grid.Row="2" Height="40" Margin="0,16,0,0" VerticalAlignment="Bottom">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
@@ -946,6 +950,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
@@ -1050,7 +1055,7 @@
                                          Style="{StaticResource MultilineTextBoxStyle}" />
                             </StackPanel>
 
-                            <Grid Grid.Row="12" Margin="0,22,0,0">
+                            <Grid Grid.Row="13" Height="40" Margin="0,16,0,0" VerticalAlignment="Bottom">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />

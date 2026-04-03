@@ -4,6 +4,8 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-04-03
+
 ### Added
 
 - Them bo docs thiet ke `SSH Tunnel Transport`, bao gom transport mode, jump host profile, security model, va checklist test.
@@ -14,6 +16,7 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 - Them cot `Proxy` trong `Saved connections`, kem kha nang doi `Direct` hoac `Proxy server` ngay tren tung row.
 - Them `SqliteStorage` va schema `connections` / `proxy_profiles`.
 - Them migration tu `clients.csv + clients.meta.xml + jump-hosts.user.xml` sang `%AppData%\\RdpManager\\rdp-manager.db`.
+- Them tray icon voi `Open / Exit`; app minimize se an xuong system tray thay vi chi nam o taskbar.
 
 ### Changed
 
@@ -28,6 +31,8 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 - SSH tunnel khi mo `mstsc` vao `127.0.0.1:<localPort>` se tu dat `authentication level:i:0` de bo qua canh bao cert mismatch chi trong tunnel mode; `Direct` van giu muc canh bao mac dinh.
 - Storage chinh cua app khong con la `CSV + XML`; app gio doc/ghi runtime vao `SQLite`, con `CSV` chi dung de import/export va backup.
 - `Import CSV` se nap du lieu vao DB; `Save database` se persist vao DB; `Export CSV` se xuat snapshot tu DB.
+- Fullscreen/maximize va footer layout duoc chinh lai de khong bi an boi taskbar, khong de lai khoang trang duoi day, va footer trai/phai dung cung baseline.
+- Bang `Saved connections` khong con scroll rieng; list hien theo phan trang co dinh de layout on dinh hon.
 
 ## [1.2.0-phase2-local-ops] - 2026-04-02
 

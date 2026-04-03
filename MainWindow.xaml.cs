@@ -14,6 +14,8 @@ using System.Windows.Media;
 using Microsoft.Win32;
 using RdpManager.Models;
 using RdpManager.Services;
+using Forms = System.Windows.Forms;
+using Drawing = System.Drawing;
 
 namespace RdpManager
 {
@@ -24,6 +26,8 @@ namespace RdpManager
         private const int DwmBorderColor = 34;
         private const int DwmCaptionColor = 35;
         private const int DwmTextColor = 36;
+        private const int WmGetMinMaxInfo = 0x0024;
+        private const uint MonitorDefaultToNearest = 0x00000002;
         private const int EntriesPageSize = 10;
         private const int HealthCheckTimeoutMilliseconds = 1500;
         private const string AllGroupsFilterOption = "All groups";
@@ -57,9 +61,58 @@ namespace RdpManager
         private JumpHostProfile _editingJumpHostProfile;
         private AppSettings _settings;
         private string _sessionCloudminiToken;
+        private Forms.NotifyIcon _trayIcon;
+        private bool _trayExitRequested;
+        private bool _trayHintShown;
+        private bool _restoreToPseudoMaximized;
+        private bool _isHandlingWindowStateChange;
+        private bool _isPseudoMaximized;
+        private System.Windows.Rect _restoreBounds = System.Windows.Rect.Empty;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int attributeValue, int attributeSize);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo monitorInfo);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Point
+        {
+            public int X;
+            public int Y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MinMaxInfo
+        {
+            public Point Reserved;
+            public Point MaxSize;
+            public Point MaxPosition;
+            public Point MinTrackSize;
+            public Point MaxTrackSize;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Rect
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private class MonitorInfo
+        {
+            public int Size = Marshal.SizeOf(typeof(MonitorInfo));
+            public Rect Monitor;
+            public Rect WorkArea;
+            public int Flags;
+        }
 
         public ObservableCollection<ProxyOption> EntryProxyOptions
         {
@@ -89,12 +142,19 @@ namespace RdpManager
             UpdateWindowTitle();
             RdpLauncher.CleanupTemporaryFiles();
             SshTunnelManager.CleanupTemporaryFiles();
+            InitializeTrayIcon();
         }
 
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
+            var source = PresentationSource.FromVisual(this) as HwndSource;
+            if (source != null)
+            {
+                source.AddHook(WindowProc);
+            }
             ApplyWindowFrameTheme();
+            ApplyWindowBoundsForCurrentState();
             UpdateMaximizeRestoreButtonState();
         }
 
@@ -667,6 +727,34 @@ namespace RdpManager
 
         private void MainWindow_OnStateChanged(object sender, EventArgs e)
         {
+            if (_isHandlingWindowStateChange)
+            {
+                return;
+            }
+
+            if (WindowState == WindowState.Maximized)
+            {
+                _isHandlingWindowStateChange = true;
+                try
+                {
+                    WindowState = WindowState.Normal;
+                    MaximizeWindowToWorkArea(true);
+                }
+                finally
+                {
+                    _isHandlingWindowStateChange = false;
+                }
+
+                return;
+            }
+
+            if (WindowState == WindowState.Minimized)
+            {
+                HideToTray();
+                return;
+            }
+
+            ApplyWindowBoundsForCurrentState();
             UpdateMaximizeRestoreButtonState();
         }
 
@@ -781,10 +869,24 @@ namespace RdpManager
 
         protected override void OnClosing(CancelEventArgs e)
         {
+            if (!_trayExitRequested && WindowState == WindowState.Minimized)
+            {
+                e.Cancel = true;
+                HideToTray();
+                return;
+            }
+
             if (!ConfirmDiscardIfNeeded())
             {
                 e.Cancel = true;
                 return;
+            }
+
+            if (_trayIcon != null)
+            {
+                _trayIcon.Visible = false;
+                _trayIcon.Dispose();
+                _trayIcon = null;
             }
 
             SshTunnelManager.ShutdownActiveSessions();
@@ -1119,9 +1221,13 @@ namespace RdpManager
                 return;
             }
 
-            WindowState = WindowState == WindowState.Maximized
-                ? WindowState.Normal
-                : WindowState.Maximized;
+            if (_isPseudoMaximized)
+            {
+                RestoreWindowFromPseudoMaximized();
+                return;
+            }
+
+            MaximizeWindowToWorkArea(true);
         }
 
         private void UpdateMaximizeRestoreButtonState()
@@ -1131,16 +1237,191 @@ namespace RdpManager
                 return;
             }
 
-            MaximizeRestoreIconTextBlock.Text = WindowState == WindowState.Maximized
+            MaximizeRestoreIconTextBlock.Text = _isPseudoMaximized
                 ? "\uE923"
                 : "\uE922";
 
             if (MaximizeRestoreWindowButton != null)
             {
-                MaximizeRestoreWindowButton.ToolTip = WindowState == WindowState.Maximized
+                MaximizeRestoreWindowButton.ToolTip = _isPseudoMaximized
                     ? "Restore down"
                     : "Maximize";
             }
+        }
+
+        private IntPtr WindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WmGetMinMaxInfo)
+            {
+                ApplyMaximizedWindowBounds(hwnd, lParam);
+                handled = true;
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private static void ApplyMaximizedWindowBounds(IntPtr hwnd, IntPtr lParam)
+        {
+            var minMaxInfo = (MinMaxInfo)Marshal.PtrToStructure(lParam, typeof(MinMaxInfo));
+            var monitorHandle = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+            if (monitorHandle != IntPtr.Zero)
+            {
+                var monitorInfo = new MonitorInfo();
+                if (GetMonitorInfo(monitorHandle, ref monitorInfo))
+                {
+                    var workArea = monitorInfo.WorkArea;
+                    var monitorArea = monitorInfo.Monitor;
+
+                    minMaxInfo.MaxPosition.X = Math.Abs(workArea.Left - monitorArea.Left);
+                    minMaxInfo.MaxPosition.Y = Math.Abs(workArea.Top - monitorArea.Top);
+                    minMaxInfo.MaxSize.X = Math.Abs(workArea.Right - workArea.Left);
+                    minMaxInfo.MaxSize.Y = Math.Abs(workArea.Bottom - workArea.Top);
+                }
+            }
+
+            Marshal.StructureToPtr(minMaxInfo, lParam, true);
+        }
+
+        private void ApplyWindowBoundsForCurrentState()
+        {
+            if (WindowFrameBorder == null)
+            {
+                return;
+            }
+
+            WindowFrameBorder.Margin = new Thickness(0);
+        }
+
+        private void MaximizeWindowToWorkArea(bool saveRestoreBounds)
+        {
+            if (saveRestoreBounds && !_isPseudoMaximized)
+            {
+                _restoreBounds = new System.Windows.Rect(Left, Top, Width, Height);
+            }
+
+            var handle = new WindowInteropHelper(this).Handle;
+            var screen = handle == IntPtr.Zero
+                ? Forms.Screen.PrimaryScreen
+                : Forms.Screen.FromHandle(handle);
+            var workingArea = screen == null ? Drawing.Rectangle.Empty : screen.WorkingArea;
+
+            if (!workingArea.IsEmpty)
+            {
+                Left = workingArea.Left;
+                Top = workingArea.Top;
+                Width = workingArea.Width;
+                Height = workingArea.Height;
+            }
+
+            _isPseudoMaximized = true;
+            ApplyWindowBoundsForCurrentState();
+            UpdateMaximizeRestoreButtonState();
+        }
+
+        private void RestoreWindowFromPseudoMaximized()
+        {
+            _isPseudoMaximized = false;
+
+            if (!_restoreBounds.IsEmpty)
+            {
+                Left = _restoreBounds.Left;
+                Top = _restoreBounds.Top;
+                Width = _restoreBounds.Width;
+                Height = _restoreBounds.Height;
+            }
+
+            ApplyWindowBoundsForCurrentState();
+            UpdateMaximizeRestoreButtonState();
+        }
+
+        private void InitializeTrayIcon()
+        {
+            if (_trayIcon != null)
+            {
+                return;
+            }
+
+            var menu = new Forms.ContextMenuStrip();
+            menu.Items.Add("Open", null, delegate { RestoreFromTray(); });
+            menu.Items.Add("Exit", null, delegate { ExitFromTray(); });
+
+            var icon = Drawing.Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? Drawing.SystemIcons.Application;
+            _trayIcon = new Forms.NotifyIcon
+            {
+                Text = "RDP Manager",
+                Icon = icon,
+                Visible = false,
+                ContextMenuStrip = menu
+            };
+            _trayIcon.DoubleClick += delegate { RestoreFromTray(); };
+        }
+
+        private void HideToTray()
+        {
+            if (_trayIcon == null)
+            {
+                InitializeTrayIcon();
+            }
+
+            _restoreToPseudoMaximized = _isPseudoMaximized;
+            ShowInTaskbar = false;
+            Hide();
+
+            if (_trayIcon != null)
+            {
+                _trayIcon.Visible = true;
+                if (!_trayHintShown)
+                {
+                    _trayIcon.BalloonTipTitle = "RDP Manager";
+                    _trayIcon.BalloonTipText = "The app is running in the tray. Double-click the tray icon to restore it.";
+                    _trayIcon.ShowBalloonTip(2000);
+                    _trayHintShown = true;
+                }
+            }
+        }
+
+        private void RestoreFromTray()
+        {
+            if (_trayIcon != null)
+            {
+                _trayIcon.Visible = false;
+            }
+
+            ShowInTaskbar = true;
+            Show();
+            Activate();
+
+            _isHandlingWindowStateChange = true;
+            try
+            {
+                WindowState = WindowState.Normal;
+            }
+            finally
+            {
+                _isHandlingWindowStateChange = false;
+            }
+
+            if (_restoreToPseudoMaximized)
+            {
+                MaximizeWindowToWorkArea(false);
+            }
+            else
+            {
+                _isPseudoMaximized = false;
+                ApplyWindowBoundsForCurrentState();
+                UpdateMaximizeRestoreButtonState();
+            }
+        }
+
+        private void ExitFromTray()
+        {
+            _trayExitRequested = true;
+            if (_trayIcon != null)
+            {
+                _trayIcon.Visible = false;
+            }
+
+            Close();
         }
 
         private void LoadJumpHostProfiles(string selectedProfileId = null)
