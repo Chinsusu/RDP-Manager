@@ -49,6 +49,8 @@ Dung 3 lop test:
 - Settings co the quay lai `All connections`
 - `Group` filter local list phai hoat dong dung
 - `Notes`, `Group`, `Tags`, `Health` van con sau khi dong/mo lai app
+- Dropdown filter local list va Cloudmini Sync phai mo/chon duoc binh thuong
+- Custom title bar phai drag, maximize, minimize, close dung nhu native window
 
 ## Release checklist
 
