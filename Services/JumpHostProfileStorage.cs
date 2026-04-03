@@ -64,7 +64,9 @@ namespace RdpManager.Services
                     Host = (profile.Host ?? string.Empty).Trim(),
                     Port = profile.Port > 0 ? profile.Port : 22,
                     User = (profile.User ?? string.Empty).Trim(),
-                    AuthMode = profile.AuthMode,
+                    AuthMode = Enum.IsDefined(typeof(JumpHostAuthMode), profile.AuthMode)
+                        ? profile.AuthMode
+                        : JumpHostAuthMode.EmbeddedPrivateKey,
                     SecretRefId = (profile.SecretRefId ?? string.Empty).Trim(),
                     PassphraseSecretRefId = (profile.PassphraseSecretRefId ?? string.Empty).Trim(),
                     ImportedKeyLabel = (profile.ImportedKeyLabel ?? string.Empty).Trim(),

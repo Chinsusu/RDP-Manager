@@ -1,3 +1,5 @@
+using System.Xml.Serialization;
+
 namespace RdpManager.Models
 {
     public class JumpHostProfile
@@ -18,6 +20,7 @@ namespace RdpManager.Models
             HostKeyFingerprint = string.Empty;
             ConnectTimeoutSeconds = 10;
             KeepAliveSeconds = 30;
+            RuntimePassword = string.Empty;
         }
 
         public string Id { get; set; }
@@ -47,6 +50,9 @@ namespace RdpManager.Models
         public int ConnectTimeoutSeconds { get; set; }
 
         public int KeepAliveSeconds { get; set; }
+
+        [XmlIgnore]
+        public string RuntimePassword { get; set; }
 
         public string DisplayName
         {

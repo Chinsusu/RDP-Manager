@@ -9,7 +9,7 @@ Tai lieu nay mo ta transport mode `SSH Tunnel` de ep RDP di qua jump host ma van
 Trang thai hien tai:
 
 - milestone 1 da implemented: `TransportMode`, `JumpHostProfile`, `SecretVault`, Settings UI
-- milestone 2 da implemented: tunnel backend, temp key materialization, connect flow, cleanup, `Test SSH`
+- milestone 2 da implemented: tunnel backend, password-based auth flow, connect flow, cleanup, `Test SSH`
 
 Chua implemented:
 
@@ -32,10 +32,11 @@ Khong lam trong scope nay:
 
 ## Product rule
 
-- Nhieu `RdpEntry` co the dung chung 1 `JumpHostProfile`.
+- Nhieu `RdpEntry` co the dung chung 1 `Proxy server` profile.
 - User cuoi chi can bam `Connect`.
 - SSH config khong duoc luu trong CSV.
 - V1 uu tien non-interactive auth de user khong bi hoi password SSH khi connect.
+- Voi tunnel mode, app duoc phep bo qua canh bao cert mismatch cua RDP vi ket noi loopback `127.0.0.1` khong khop CN/SAN cua may dich.
 
 ## Core decision
 
@@ -61,57 +62,53 @@ V2 moi xem xet:
 
 ## Entry editor
 
-Them field:
+Trang thai GUI hien tai:
 
-- `Transport`: `Direct | SSH Tunnel`
-- `Jump host profile`
-- `Tunnel target host override` optional
-- `Tunnel target port override` optional
+- 1 field `Proxy`
+- `Direct`
+- danh sach `Proxy server` da luu
 
 Rule:
 
-- Neu `Transport = Direct` thi an cac field tunnel
-- Neu `Transport = SSH Tunnel` thi `Jump host profile` la required
+- Neu `Proxy = Direct` thi entry di thang nhu RDP thong thuong
+- Neu `Proxy = <profile>` thi app map thanh `SSH Tunnel` + `JumpHostProfileId`
+- User khong can biet backend dang mo tunnel hay local port nao
 
 ## Settings
 
-Them section `Jump Hosts`:
+Them section `Proxy servers`:
 
 - list profile
 - add profile
 - edit profile
 - delete profile
 - test SSH
-- import private key
-- rotate secret
+- luu password an toan
 
-`Test SSH` hien tai duoc implement bang 1 local forward ngan toi `127.0.0.1:<sshPort>` tren jump host, de verify auth va forwarding permission ma khong mo RDP.
+`Test SSH` hien tai duoc implement bang ket noi SSH that den proxy server, xac thuc bang password da luu trong protected storage, sau do tra ket qua pass/fail ro rang tren GUI.
 
 ## Authentication strategy
 
-## V1 supported auth modes
+## Current V1 GUI model
+
+- `Password` la auth mode duy nhat hien tren GUI
+- password SSH duoc luu trong `SecretVault`
+- user cuoi khong can nhap lai password khi connect
+- `Test SSH` va `Connect` dung chung secret da luu
+
+## Backend implementation
+
+- `Password` auth hien tai chay in-process bang `SSH.NET`
+- app tao local forward `127.0.0.1:<localPort> -> targetHost:targetPort`
+- sau khi local forward san sang, app mo `mstsc` vao `127.0.0.1:<localPort>`
+- khi dong `mstsc`, app dong forwarded port va dispose `SshClient`
+
+## Hidden / future modes
 
 - `EmbeddedPrivateKey`
 - `Agent`
 
-## V1 not supported
-
-- raw SSH password login cho 1-click tunnel
-
-Ly do:
-
-- `ssh.exe` khong phai lua chon tot cho flow password non-interactive
-- user da chot yeu cau chi bam `Connect`, khong nhap lai credential
-- key/cert de automation on dinh hon password prompt
-
-## Preferred V1 model
-
-- private key duoc import vao app
-- key bytes duoc ma hoa bang user-scoped protected storage
-- khi connect, app materialize ra temp key file co vong doi ngan
-- `ssh.exe` duoc goi voi `-i <tempkey>`
-- temp key file bi xoa ngay sau khi tunnel dung
-- test SSH cung dung chung auth material va temp key strategy nay
+Nhung cac mode nay hien khong duoc mo tren GUI chinh.
 
 ## Future model
 
@@ -124,27 +121,25 @@ Ly do:
 2. App resolve `TransportMode`.
 3. Neu `Direct`, flow giong hien tai.
 4. Neu `SSH Tunnel`:
-   - load `JumpHostProfile`
+   - load `Proxy server` profile
    - resolve auth material tu `SecretVault`
-   - materialize temp key file neu auth mode la `EmbeddedPrivateKey`
    - chon local port trong khoang an toan
-   - start `ssh.exe -N -L 127.0.0.1:<local>:<targetHost>:<targetPort> user@jumpHost`
+   - mo tunnel qua `SSH.NET`
    - wait den khi local port open hoac timeout
    - goi `cmdkey` cho `TERMSRV/127.0.0.1`
-   - launch `mstsc /v:127.0.0.1:<local>`
+   - launch `mstsc /v:127.0.0.1:<local>` voi `authentication level:i:0`
    - theo doi `mstsc`
    - cleanup tunnel khi `mstsc` dong
-   - xoa temp key file neu da tao
+   - dispose session
 
 ## Implemented test flow
 
 1. User bam `Test SSH`.
 2. App build profile tu editor hien tai.
-3. Neu auth mode la `EmbeddedPrivateKey`, app lay key tu `SecretVault`.
-4. App materialize temp key file neu can.
-5. App mo `ssh.exe -N -L 127.0.0.1:<local>:127.0.0.1:<sshPort>`.
-6. Neu local port listen thanh cong trong timeout, test pass.
-7. App kill process test va xoa temp key file.
+3. App tai password tu `SecretVault`.
+4. App mo ket noi SSH that den proxy server.
+5. Neu auth thanh cong, test pass.
+6. App dong ket noi test ngay sau khi xac nhan.
 
 ## Data model
 
@@ -164,9 +159,6 @@ Ly do:
 - `User`
 - `AuthMode`
 - `SecretRefId`
-- `PassphraseSecretRefId`
-- `ImportedKeyLabel`
-- `UseAgent`
 - `StrictHostKeyCheckingMode`
 - `HostKeyFingerprint`
 - `ConnectTimeoutSeconds`
@@ -179,9 +171,8 @@ Runtime only:
 - `EntryId`
 - `ProfileId`
 - `LocalPort`
-- `SshProcessId`
+- `ProxyServerProfileId`
 - `MstscProcessId`
-- `TempKeyFilePath`
 - `StartedUtc`
 - `Status`
 
@@ -195,9 +186,7 @@ Runtime only:
 
 Secret kinds:
 
-- `SshPrivateKey`
-- `SshPrivateKeyPassphrase`
-- `SshCertificate`
+- `SshPassword`
 
 ## Security model
 
@@ -220,15 +209,12 @@ Neu client tu mo SSH tunnel truc tiep thi phai co mot cach xac thuc tren chinh m
 
 Muc toi thieu cho V1:
 
-- luu SSH secret bang user-scoped protected storage
+- luu SSH password bang user-scoped protected storage
 - khong luu trong CSV
 - khong hien lai raw secret tren UI sau khi save
-- temp key file phai nam trong thu muc user-scoped, ACL han che, va xoa sau khi dung
 
 Tot hon:
 
-- dung private key duoc ma hoa
-- uu tien `ssh-agent` neu moi truong co
 - pin `HostKeyFingerprint`
 - khoa jump host account bang `AllowTcpForwarding local` va `PermitOpen`
 
@@ -249,16 +235,14 @@ Neu muon thuc su khong de client giu bat ky SSH auth material nao thi can doi ar
 - Tunnel timeout: kill process, khong de process treo
 - `mstsc` fail: cleanup tunnel ngay
 - App restart: startup can cleanup best-effort cac session do app tao truoc do
-- Temp key file cleanup fail: log warning va retry cleanup khi app start lan sau
+- Managed tunnel cleanup fail: log warning va cleanup best-effort khi app start lan sau
 
 ## Code-ready service map
 
 - `ITransportResolver`
 - `IJumpHostProfileStorage`
 - `ISecretVault`
-- `ITempKeyMaterializer`
 - `ISshTunnelManager`
-- `ISshCommandBuilder`
 - `IPortAllocator`
 - `ISessionWatcher`
 - `IProcessTracker`
@@ -272,13 +256,11 @@ Services/
     TransportResolver.cs
     DirectRdpLauncher.cs
     SshTunnelManager.cs
-    SshCommandBuilder.cs
     PortAllocator.cs
     SessionWatcher.cs
   Security/
     SecretVault.cs
     ProtectedDataProtector.cs
-    TempKeyMaterializer.cs
   Storage/
     JumpHostProfileStorage.cs
 Models/
@@ -297,40 +279,38 @@ Connect(entry):
 
   profile = JumpHostProfileStorage.Get(entry.JumpHostProfileId)
   secret = SecretVault.Get(profile.SecretRefId)
-  keyFile = TempKeyMaterializer.Materialize(secret)
   localPort = PortAllocator.Reserve()
-  sshArgs = SshCommandBuilder.Build(profile, entry, localPort, keyFile)
-  sshProcess = StartSsh(sshArgs)
+  tunnel = SshTunnelManager.OpenPasswordTunnel(profile, entry, localPort, secret)
   WaitForLocalPort(localPort, profile.ConnectTimeoutSeconds)
   CacheRdpCredential("127.0.0.1", localPort, entry.User, entry.Password)
-  mstsc = LaunchMstsc(localPort)
-  SessionWatcher.Bind(mstsc, sshProcess, keyFile)
+  mstsc = LaunchMstsc(localPort, ignoreCertificateWarnings=true)
+  SessionWatcher.Bind(mstsc, tunnel)
 ```
 
 ## UI state rules
 
-- `Transport = Direct`: an toan bo section jump host
-- `Transport = SSH Tunnel`: hien profile selector va target override
-- `AuthMode = EmbeddedPrivateKey`: hien `Import key`, `Replace key`, `Clear key`
-- `AuthMode = Agent`: an phan import key, chi show note ve `ssh-agent`
+- `Proxy = Direct`: entry di thang
+- `Proxy = Proxy server`: entry di qua SSH tunnel
 - Sau khi luu secret, UI hien `Stored securely` thay vi value that
 - Sau khi `Test SSH`, UI hien status line thanh cong / that bai ngay trong card editor
+- Row `Proxy` trong `Saved connections` co the doi nhanh `Direct` hay `Proxy server` bang dropdown inline
 
 ## Implementation milestones
 
 1. Them model `TransportMode`, `JumpHostProfile`, `SecretVault`
-2. Them Settings UI cho `Jump Hosts`
-3. Them protected storage va temp key materializer
+2. Them Settings UI cho `Proxy servers`
+3. Them protected storage cho SSH password
 4. Them `SshTunnelManager`
 5. Noi `Connect` flow voi cleanup
 6. Manual QA tunnel lifecycle
 
 ## Acceptance criteria
 
-- User co the tao `JumpHostProfile` va test ket noi SSH
-- 1 `JumpHostProfile` co the duoc gan cho nhieu `RdpEntry`
+- User co the tao `Proxy server` profile va test ket noi SSH
+- 1 `Proxy server` profile co the duoc gan cho nhieu `RdpEntry`
 - `Connect` qua `SSH Tunnel` khong lam vo flow `Direct`
 - Tunnel phai duoc cleanup sau khi dong `mstsc`
 - SSH secret khong nam trong CSV
 - UI khong show raw secret sau khi da luu
 - V1 connect 1-click khong duoc yeu cau user nhap lai SSH password
+- Tunnel mode khong duoc bi chan boi popup cert mismatch cua `mstsc`

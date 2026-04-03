@@ -28,10 +28,15 @@ namespace RdpManager.Services
             var user = (entry.User ?? string.Empty).Trim();
             var password = entry.Password ?? string.Empty;
 
-            return LaunchToEndpoint(host, port, user, password);
+            return LaunchToEndpoint(host, port, user, password, false);
         }
 
         public static Process LaunchToEndpoint(string host, int port, string user, string password)
+        {
+            return LaunchToEndpoint(host, port, user, password, false);
+        }
+
+        public static Process LaunchToEndpoint(string host, int port, string user, string password, bool ignoreCertificateWarnings)
         {
             host = (host ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(host))
@@ -44,7 +49,7 @@ namespace RdpManager.Services
                 StoreCredentials(host, port, user, password);
             }
 
-            var rdpFile = CreateTemporaryRdpFile(host, port, user);
+            var rdpFile = CreateTemporaryRdpFile(host, port, user, ignoreCertificateWarnings);
 
             var process = Process.Start(new ProcessStartInfo
             {
@@ -127,7 +132,7 @@ namespace RdpManager.Services
             }
         }
 
-        private static string CreateTemporaryRdpFile(string host, int port, string user)
+        private static string CreateTemporaryRdpFile(string host, int port, string user, bool ignoreCertificateWarnings)
         {
             Directory.CreateDirectory(TempDirectory);
 
@@ -143,7 +148,7 @@ namespace RdpManager.Services
             builder.AppendLine("compression:i:1");
             builder.AppendLine("prompt for credentials:i:0");
             builder.AppendLine("promptcredentialonce:i:1");
-            builder.AppendLine("authentication level:i:2");
+            builder.AppendLine(ignoreCertificateWarnings ? "authentication level:i:0" : "authentication level:i:2");
             builder.AppendLine("enablecredsspsupport:i:1");
             builder.AppendLine("full address:s:" + address);
 

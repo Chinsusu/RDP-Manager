@@ -10,6 +10,7 @@ namespace RdpManager.Models
         private string _port = "3389";
         private string _user;
         private string _password;
+        private string _proxyDisplayName;
         private TransportMode _transportMode;
         private string _jumpHostProfileId;
         private string _tunnelTargetHostOverride;
@@ -115,6 +116,23 @@ namespace RdpManager.Models
             get { return string.IsNullOrEmpty(Password) ? string.Empty : "********"; }
         }
 
+        public string ProxyDisplayName
+        {
+            get { return _proxyDisplayName; }
+            set
+            {
+                if (_proxyDisplayName == value)
+                {
+                    return;
+                }
+
+                _proxyDisplayName = value;
+                OnPropertyChanged("ProxyDisplayName");
+                OnPropertyChanged("ProxyLabel");
+                OnPropertyChanged("ProxySelectionKey");
+            }
+        }
+
         public TransportMode TransportMode
         {
             get { return _transportMode; }
@@ -128,6 +146,8 @@ namespace RdpManager.Models
                 _transportMode = value;
                 OnPropertyChanged("TransportMode");
                 OnPropertyChanged("TransportLabel");
+                OnPropertyChanged("ProxyLabel");
+                OnPropertyChanged("ProxySelectionKey");
             }
         }
 
@@ -143,6 +163,8 @@ namespace RdpManager.Models
 
                 _jumpHostProfileId = value;
                 OnPropertyChanged("JumpHostProfileId");
+                OnPropertyChanged("ProxyLabel");
+                OnPropertyChanged("ProxySelectionKey");
             }
         }
 
@@ -229,6 +251,44 @@ namespace RdpManager.Models
         public string TransportLabel
         {
             get { return TransportMode == TransportMode.SshTunnel ? "SSH Tunnel" : "Direct"; }
+        }
+
+        public string ProxyLabel
+        {
+            get
+            {
+                return TransportMode == TransportMode.SshTunnel
+                    ? (string.IsNullOrWhiteSpace(ProxyDisplayName) ? "Proxy server" : ProxyDisplayName)
+                    : "Direct";
+            }
+        }
+
+        public string ProxySelectionKey
+        {
+            get
+            {
+                return TransportMode == TransportMode.SshTunnel
+                    ? "proxy:" + (JumpHostProfileId ?? string.Empty)
+                    : "direct";
+            }
+            set
+            {
+                var normalized = (value ?? string.Empty).Trim();
+                if (string.Equals(normalized, "direct", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.IsNullOrWhiteSpace(normalized))
+                {
+                    TransportMode = TransportMode.Direct;
+                    JumpHostProfileId = string.Empty;
+                    ProxyDisplayName = string.Empty;
+                    return;
+                }
+
+                if (normalized.StartsWith("proxy:", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    TransportMode = TransportMode.SshTunnel;
+                    JumpHostProfileId = normalized.Substring("proxy:".Length);
+                }
+            }
         }
 
         public bool IsFavorite

@@ -11,6 +11,7 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 - Them backend `SSH Tunnel` milestone 2: app mo `ssh.exe` an, doi local forward san sang, roi launch `mstsc` qua `127.0.0.1:<localPort>`.
 - Them protected `SecretVault`, `TempKeyMaterializer`, `JumpHostProfileStorage`, va `SshTunnelManager`.
 - Them `Test SSH` cho `Jump Host Profile`, chay bang cung auth material va forward backend nhu flow tunnel that.
+- Them cot `Proxy` trong `Saved connections`, kem kha nang doi `Direct` hoac `Proxy server` ngay tren tung row.
 
 ### Changed
 
@@ -19,6 +20,10 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 - App gio dung custom title bar lien voi UI thay cho native title bar, kem nut `min / max / close` lon hon theo huong Win 11.
 - Bang `Saved connections` khong con hien cot `HostName`; thu tu cot duoc doi de `Password` dung ngay sau `User`.
 - `Connect` cho entry `SSH Tunnel` gio chay flow tunnel that thay vi chi hien placeholder message.
+- UI doi ngon ngu tu `Jump Host` sang `Proxy server`; `Entry editor` dung 1 dropdown `Proxy` duy nhat thay cho `Transport + Jump host`.
+- Proxy server editor duoc rut gon va mac dinh theo huong `SSH password auth`; cac lua chon key/agent khong con hien tren GUI.
+- Entry editor va phan trang/footer duoc canh lai de khong bi day xuong khoi viewport o do phan giai hien tai.
+- SSH tunnel khi mo `mstsc` vao `127.0.0.1:<localPort>` se tu dat `authentication level:i:0` de bo qua canh bao cert mismatch chi trong tunnel mode; `Direct` van giu muc canh bao mac dinh.
 
 ## [1.2.0-phase2-local-ops] - 2026-04-02
 

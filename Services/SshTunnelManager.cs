@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using Renci.SshNet;
 using RdpManager.Models;
 
 namespace RdpManager.Services
@@ -27,6 +30,12 @@ namespace RdpManager.Services
             if (profile == null)
             {
                 throw new InvalidOperationException("Jump host profile not found.");
+            }
+
+            if (profile.AuthMode == JumpHostAuthMode.Password)
+            {
+                LaunchWithPasswordTunnel(entry, profile);
+                return;
             }
 
             var targetHost = string.IsNullOrWhiteSpace(entry.TunnelTargetHostOverride)
@@ -78,7 +87,7 @@ namespace RdpManager.Services
 
                 WaitForTunnelReady(sshProcess, localPort, profile.ConnectTimeoutSeconds);
 
-                var mstscProcess = RdpLauncher.LaunchToEndpoint("127.0.0.1", localPort, entry.User, entry.Password);
+                var mstscProcess = RdpLauncher.LaunchToEndpoint("127.0.0.1", localPort, entry.User, entry.Password, true);
                 RegisterSession(new ActiveTunnelSession
                 {
                     SshProcess = sshProcess,
@@ -111,6 +120,11 @@ namespace RdpManager.Services
                 throw new InvalidOperationException("Jump host user cannot be empty.");
             }
 
+            if (profile.AuthMode == JumpHostAuthMode.Password)
+            {
+                return TestPasswordProfile(profile);
+            }
+
             var localPort = FindAvailableLocalPort();
             var remoteProbePort = Math.Max(1, profile.Port);
             var tempKeyFilePath = string.Empty;
@@ -133,7 +147,7 @@ namespace RdpManager.Services
                     tempKeyFilePath = TempKeyMaterializer.MaterializePrivateKey(privateKeyContent);
                 }
 
-                sshProcess = Process.Start(new ProcessStartInfo
+                var startInfo = new ProcessStartInfo
                 {
                     FileName = ResolveSshPath(),
                     Arguments = BuildArguments(profile, "127.0.0.1", remoteProbePort, localPort, tempKeyFilePath),
@@ -142,7 +156,9 @@ namespace RdpManager.Services
                     RedirectStandardOutput = true,
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden
-                });
+                };
+
+                sshProcess = Process.Start(startInfo);
                 if (sshProcess == null)
                 {
                     throw new InvalidOperationException("Failed to start ssh.exe.");
@@ -227,6 +243,7 @@ namespace RdpManager.Services
             }
 
             CleanupProcess(session.SshProcess);
+            CleanupManagedTunnel(session.ManagedPort, session.ManagedClient);
 
             if (session.MstscProcess != null)
             {
@@ -240,6 +257,153 @@ namespace RdpManager.Services
             }
 
             TempKeyMaterializer.Delete(session.TempKeyFilePath);
+        }
+
+        private static void LaunchWithPasswordTunnel(RdpEntry entry, JumpHostProfile profile)
+        {
+            var targetHost = string.IsNullOrWhiteSpace(entry.TunnelTargetHostOverride)
+                ? (entry.Host ?? string.Empty).Trim()
+                : entry.TunnelTargetHostOverride.Trim();
+            if (string.IsNullOrWhiteSpace(targetHost))
+            {
+                throw new InvalidOperationException("Tunnel target host cannot be empty.");
+            }
+
+            var targetPort = ParsePort(string.IsNullOrWhiteSpace(entry.TunnelTargetPortOverride) ? entry.Port : entry.TunnelTargetPortOverride);
+            var localPort = FindAvailableLocalPort();
+            SshClient client = null;
+            ForwardedPortLocal forwardedPort = null;
+
+            try
+            {
+                client = CreatePasswordClient(profile);
+                client.Connect();
+
+                forwardedPort = new ForwardedPortLocal("127.0.0.1", (uint)localPort, targetHost, (uint)targetPort);
+                client.AddForwardedPort(forwardedPort);
+                forwardedPort.Start();
+                WaitForManagedTunnelReady(client, forwardedPort, localPort, profile.ConnectTimeoutSeconds);
+
+                var mstscProcess = RdpLauncher.LaunchToEndpoint("127.0.0.1", localPort, entry.User, entry.Password, true);
+                RegisterSession(new ActiveTunnelSession
+                {
+                    ManagedClient = client,
+                    ManagedPort = forwardedPort,
+                    MstscProcess = mstscProcess
+                });
+            }
+            catch
+            {
+                CleanupManagedTunnel(forwardedPort, client);
+                throw;
+            }
+        }
+
+        private static string TestPasswordProfile(JumpHostProfile profile)
+        {
+            SshClient client = null;
+            try
+            {
+                client = CreatePasswordClient(profile);
+                client.Connect();
+                return string.Format("SSH test succeeded for {0}@{1}:{2}.", profile.User, profile.Host, profile.Port);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("SSH password authentication failed. " + ex.Message, ex);
+            }
+            finally
+            {
+                CleanupManagedTunnel(null, client);
+            }
+        }
+
+        private static SshClient CreatePasswordClient(JumpHostProfile profile)
+        {
+            var password = LoadPassword(profile);
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                throw new InvalidOperationException("No SSH password is stored for the selected jump host profile.");
+            }
+
+            var client = new SshClient(profile.Host, Math.Max(1, profile.Port), profile.User, password);
+            client.KeepAliveInterval = TimeSpan.FromSeconds(Math.Max(15, profile.KeepAliveSeconds));
+            return client;
+        }
+
+        private static void WaitForManagedTunnelReady(SshClient client, ForwardedPortLocal forwardedPort, int localPort, int timeoutSeconds)
+        {
+            var timeoutMilliseconds = Math.Max(10, timeoutSeconds) * 1000;
+            var startedAt = Environment.TickCount;
+
+            while (Environment.TickCount - startedAt < timeoutMilliseconds)
+            {
+                if (client == null || !client.IsConnected)
+                {
+                    throw new InvalidOperationException("SSH tunnel disconnected before it became ready.");
+                }
+
+                if (forwardedPort != null && forwardedPort.IsStarted &&
+                    (IsLocalPortListening(localPort) || CanConnectLocalPort(localPort)))
+                {
+                    return;
+                }
+
+                Thread.Sleep(200);
+            }
+
+            throw new InvalidOperationException("Timed out while waiting for the SSH tunnel to become ready.");
+        }
+
+        private static void CleanupManagedTunnel(ForwardedPortLocal forwardedPort, SshClient client)
+        {
+            if (forwardedPort != null)
+            {
+                try
+                {
+                    if (forwardedPort.IsStarted)
+                    {
+                        forwardedPort.Stop();
+                    }
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    try
+                    {
+                        forwardedPort.Dispose();
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            if (client != null)
+            {
+                try
+                {
+                    if (client.IsConnected)
+                    {
+                        client.Disconnect();
+                    }
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    try
+                    {
+                        client.Dispose();
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
         }
 
         private static void CleanupProcess(Process process)
@@ -274,7 +438,7 @@ namespace RdpManager.Services
 
         private static void WaitForTunnelReady(Process sshProcess, int localPort, int timeoutSeconds)
         {
-            var timeoutMilliseconds = Math.Max(3, timeoutSeconds) * 1000;
+            var timeoutMilliseconds = Math.Max(15, timeoutSeconds) * 1000;
             var startedAt = Environment.TickCount;
 
             while (Environment.TickCount - startedAt < timeoutMilliseconds)
@@ -288,7 +452,10 @@ namespace RdpManager.Services
                             : "ssh.exe failed. " + error);
                 }
 
-                if (CanConnectLocalPort(localPort))
+                // The SSH client can take several seconds before it starts accepting
+                // loopback connections. Treat a bound listener as ready even if our
+                // immediate TCP probe races the final forward activation.
+                if (IsLocalPortListening(localPort) || CanConnectLocalPort(localPort))
                 {
                     return;
                 }
@@ -297,6 +464,25 @@ namespace RdpManager.Services
             }
 
             throw new InvalidOperationException("Timed out while waiting for the SSH tunnel to become ready.");
+        }
+
+        private static bool IsLocalPortListening(int port)
+        {
+            try
+            {
+                return IPGlobalProperties.GetIPGlobalProperties()
+                    .GetActiveTcpListeners()
+                    .Any(endpoint => endpoint != null &&
+                        endpoint.Port == port &&
+                        (IPAddress.Any.Equals(endpoint.Address) ||
+                         IPAddress.IPv6Any.Equals(endpoint.Address) ||
+                         IPAddress.Loopback.Equals(endpoint.Address) ||
+                         IPAddress.IPv6Loopback.Equals(endpoint.Address)));
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static bool CanConnectLocalPort(int port)
@@ -333,11 +519,7 @@ namespace RdpManager.Services
             var parts = new List<string>
             {
                 "-N",
-                "-o", "BatchMode=yes",
                 "-o", "ExitOnForwardFailure=yes",
-                "-o", "PreferredAuthentications=publickey",
-                "-o", "PasswordAuthentication=no",
-                "-o", "KbdInteractiveAuthentication=no",
                 "-o", "StrictHostKeyChecking=accept-new",
                 "-o", "UserKnownHostsFile=" + QuoteArgument(KnownHostsFilePath),
                 "-o", "LogLevel=ERROR",
@@ -345,6 +527,33 @@ namespace RdpManager.Services
                 "-o", "ServerAliveInterval=" + Math.Max(15, profile.KeepAliveSeconds),
                 "-p", Math.Max(1, profile.Port).ToString()
             };
+
+            if (profile.AuthMode == JumpHostAuthMode.Password)
+            {
+                parts.Add("-o");
+                parts.Add("BatchMode=no");
+                parts.Add("-o");
+                parts.Add("PreferredAuthentications=password");
+                parts.Add("-o");
+                parts.Add("PubkeyAuthentication=no");
+                parts.Add("-o");
+                parts.Add("PasswordAuthentication=yes");
+                parts.Add("-o");
+                parts.Add("KbdInteractiveAuthentication=no");
+                parts.Add("-o");
+                parts.Add("NumberOfPasswordPrompts=1");
+            }
+            else
+            {
+                parts.Add("-o");
+                parts.Add("BatchMode=yes");
+                parts.Add("-o");
+                parts.Add("PreferredAuthentications=publickey");
+                parts.Add("-o");
+                parts.Add("PasswordAuthentication=no");
+                parts.Add("-o");
+                parts.Add("KbdInteractiveAuthentication=no");
+            }
 
             if (profile.AuthMode == JumpHostAuthMode.EmbeddedPrivateKey)
             {
@@ -359,6 +568,21 @@ namespace RdpManager.Services
             parts.Add(string.Format("{0}@{1}", profile.User, profile.Host));
 
             return string.Join(" ", parts.ToArray());
+        }
+
+        private static string LoadPassword(JumpHostProfile profile)
+        {
+            if (profile == null)
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(profile.RuntimePassword))
+            {
+                return profile.RuntimePassword;
+            }
+
+            return SecretVault.LoadSecret(profile.SecretRefId);
         }
 
         private static string ResolveSshPath()
@@ -476,6 +700,10 @@ namespace RdpManager.Services
             public Process SshProcess { get; set; }
 
             public Process MstscProcess { get; set; }
+
+            public SshClient ManagedClient { get; set; }
+
+            public ForwardedPortLocal ManagedPort { get; set; }
 
             public string TempKeyFilePath { get; set; }
         }

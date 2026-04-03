@@ -31,6 +31,7 @@ namespace RdpManager
         private ObservableCollection<RdpEntry> _entries = new ObservableCollection<RdpEntry>();
         private readonly ObservableCollection<RdpEntry> _pagedEntries = new ObservableCollection<RdpEntry>();
         private readonly ObservableCollection<JumpHostProfile> _jumpHostProfiles = new ObservableCollection<JumpHostProfile>();
+        private readonly ObservableCollection<ProxyOption> _entryProxyOptions = new ObservableCollection<ProxyOption>();
         private readonly ObservableCollection<string> _connectionGroupOptions = new ObservableCollection<string>();
         private string _currentFilePath;
         private bool _isDirty;
@@ -59,6 +60,11 @@ namespace RdpManager
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int attributeValue, int attributeSize);
 
+        public ObservableCollection<ProxyOption> EntryProxyOptions
+        {
+            get { return _entryProxyOptions; }
+        }
+
         public MainWindow()
         {
             InitializeComponent();
@@ -67,7 +73,7 @@ namespace RdpManager
             CloudminiPreviewGrid.ItemsSource = _cloudminiPreviewItems;
             ConnectionsGroupFilterComboBox.ItemsSource = _connectionGroupOptions;
             JumpHostProfilesListBox.ItemsSource = _jumpHostProfiles;
-            EntryJumpHostProfileComboBox.ItemsSource = _jumpHostProfiles;
+            EntryProxyComboBox.ItemsSource = _entryProxyOptions;
             _currentFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "clients.csv");
             _settings = SettingsStorage.Load();
 
@@ -399,14 +405,14 @@ namespace RdpManager
         {
             if (_editingJumpHostProfile == null || string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id))
             {
-                MessageBox.Show(this, "Select a jump host profile to delete.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Select a proxy server profile to delete.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var result = MessageBox.Show(
                 this,
-                string.Format("Delete jump host profile '{0}'?", _editingJumpHostProfile.DisplayName),
-                "Jump Hosts",
+                string.Format("Delete proxy server profile '{0}'?", _editingJumpHostProfile.DisplayName),
+                "Proxy Servers",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes)
@@ -456,6 +462,11 @@ namespace RdpManager
                 return;
             }
 
+            if (!TryPersistJumpHostSecret(profile))
+            {
+                return;
+            }
+
             if (_editingJumpHostProfile != null &&
                 !string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId) &&
                 profile.AuthMode == JumpHostAuthMode.Agent)
@@ -479,67 +490,49 @@ namespace RdpManager
             JumpHostProfileStorage.Save(profiles);
             LoadJumpHostProfiles(profile.Id);
             UpdateSettingsSummary();
-            MessageBox.Show(this, "Jump host profile saved.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Proxy server profile saved.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void ImportJumpHostKeyButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (_editingJumpHostProfile == null || string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id))
-            {
-                MessageBox.Show(this, "Save the jump host profile first, then import a key.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            if (GetSelectedJumpHostAuthMode() == JumpHostAuthMode.Agent)
-            {
-                MessageBox.Show(this, "Agent mode does not store a private key in the app.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var dialog = new OpenFileDialog
-            {
-                Filter = "SSH private keys (*.*)|*.*",
-                CheckFileExists = true,
-                Multiselect = false
-            };
-
-            if (dialog.ShowDialog(this) != true)
-            {
-                return;
-            }
-
-            var keyContent = File.ReadAllText(dialog.FileName);
-            if (string.IsNullOrWhiteSpace(keyContent))
-            {
-                MessageBox.Show(this, "Selected key file is empty.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var secretId = SecretVault.SaveSecret(_editingJumpHostProfile.SecretRefId, SecretKind.SshPrivateKey, keyContent);
-            _editingJumpHostProfile.SecretRefId = secretId;
-            _editingJumpHostProfile.ImportedKeyLabel = Path.GetFileName(dialog.FileName);
-
-            SaveJumpHostProfileFromCurrentSelection();
-            MessageBox.Show(this, "Private key stored securely for this profile.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "This build uses SSH password authentication only.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void ClearJumpHostKeyButton_OnClick(object sender, RoutedEventArgs e)
         {
             if (_editingJumpHostProfile == null || string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id))
             {
-                MessageBox.Show(this, "Select a saved jump host profile first.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Select a saved proxy server profile first.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId))
+            var authMode = GetSelectedJumpHostAuthMode();
+            var secretKind = SecretVault.GetSecretKind(_editingJumpHostProfile.SecretRefId);
+            if (string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId) || !SecretVault.HasSecret(_editingJumpHostProfile.SecretRefId))
             {
-                MessageBox.Show(this, "This profile does not have a stored private key.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, authMode == JumpHostAuthMode.Password ? "This profile does not have a stored SSH password." : "This profile does not have a stored private key.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (authMode == JumpHostAuthMode.Password && secretKind != SecretKind.SshPassword)
+            {
+                MessageBox.Show(this, "This profile does not have a stored SSH password.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (authMode == JumpHostAuthMode.EmbeddedPrivateKey && secretKind != SecretKind.SshPrivateKey)
+            {
+                MessageBox.Show(this, "This profile does not have a stored private key.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             SecretVault.DeleteSecret(_editingJumpHostProfile.SecretRefId);
             _editingJumpHostProfile.SecretRefId = string.Empty;
             _editingJumpHostProfile.ImportedKeyLabel = string.Empty;
+            if (JumpHostPasswordBox != null)
+            {
+                JumpHostPasswordBox.Password = string.Empty;
+            }
 
             SaveJumpHostProfileFromCurrentSelection();
         }
@@ -558,12 +551,12 @@ namespace RdpManager
                 SetJumpHostTestStatus("Testing SSH tunnel profile...", new SolidColorBrush(Color.FromRgb(105, 120, 142)));
                 var message = SshTunnelManager.TestProfile(profile);
                 SetJumpHostTestStatus(message, new SolidColorBrush(Color.FromRgb(47, 125, 50)));
-                MessageBox.Show(this, message, "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, message, "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 SetJumpHostTestStatus(ex.Message, new SolidColorBrush(Color.FromRgb(179, 56, 56)));
-                MessageBox.Show(this, ex.Message, "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, ex.Message, "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             finally
             {
@@ -587,7 +580,7 @@ namespace RdpManager
             UpdateJumpHostEditorState();
         }
 
-        private void EntryTransportComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void EntryProxyComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isPopulatingForm)
             {
@@ -598,14 +591,41 @@ namespace RdpManager
             UpdateTransportEditorState();
         }
 
-        private void EntryJumpHostProfileComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void EntryGridProxyComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_isPopulatingForm)
+            if (_isPopulatingForm || _isRebuildingEntriesPage)
             {
                 return;
             }
 
-            _editorDirty = true;
+            var comboBox = sender as ComboBox;
+            var entry = comboBox == null ? null : comboBox.DataContext as RdpEntry;
+            var option = comboBox == null ? null : comboBox.SelectedItem as ProxyOption;
+            if (entry == null || option == null)
+            {
+                return;
+            }
+
+            var currentProfileId = entry.JumpHostProfileId ?? string.Empty;
+            var nextProfileId = option.JumpHostProfileId ?? string.Empty;
+            var nextDisplayName = option.TransportMode == TransportMode.SshTunnel ? option.DisplayName ?? string.Empty : string.Empty;
+            if (entry.TransportMode == option.TransportMode &&
+                string.Equals(currentProfileId, nextProfileId, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(entry.ProxyDisplayName ?? string.Empty, nextDisplayName, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            entry.TransportMode = option.TransportMode;
+            entry.JumpHostProfileId = option.TransportMode == TransportMode.SshTunnel ? nextProfileId : string.Empty;
+            entry.ProxyDisplayName = nextDisplayName;
+
+            if (ReferenceEquals(_editingEntry, entry))
+            {
+                PopulateForm(entry);
+            }
+
+            MarkDirty();
         }
 
         private void BackToConnectionsButton_OnClick(object sender, RoutedEventArgs e)
@@ -850,8 +870,8 @@ namespace RdpManager
 
             if (transportMode == TransportMode.SshTunnel && string.IsNullOrWhiteSpace(jumpHostProfileId))
             {
-                MessageBox.Show(this, "Select a jump host profile when transport is SSH Tunnel.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
-                EntryJumpHostProfileComboBox.Focus();
+                MessageBox.Show(this, "Select a proxy server when proxy mode is enabled.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                EntryProxyComboBox.Focus();
                 return null;
             }
 
@@ -870,6 +890,9 @@ namespace RdpManager
             entry.Password = password;
             entry.TransportMode = transportMode;
             entry.JumpHostProfileId = jumpHostProfileId;
+            entry.ProxyDisplayName = transportMode == TransportMode.SshTunnel
+                ? GetProxyDisplayName(jumpHostProfileId)
+                : string.Empty;
             entry.TunnelTargetHostOverride = tunnelTargetHostOverride;
             entry.TunnelTargetPortOverride = tunnelTargetPortOverride;
             entry.GroupName = groupName;
@@ -893,8 +916,7 @@ namespace RdpManager
             PortTextBox.Text = string.IsNullOrWhiteSpace(entry.Port) ? "3389" : entry.Port;
             UserTextBox.Text = entry.User;
             PasswordBox.Password = entry.Password ?? string.Empty;
-            SetComboSelectedTag(EntryTransportComboBox, entry.TransportMode == TransportMode.SshTunnel ? "SshTunnel" : "Direct");
-            EntryJumpHostProfileComboBox.SelectedItem = FindJumpHostProfile(entry.JumpHostProfileId);
+            EntryProxyComboBox.SelectedItem = FindProxyOption(entry.TransportMode, entry.JumpHostProfileId);
             GroupTextBox.Text = entry.GroupName ?? string.Empty;
             TagsTextBox.Text = entry.Tags ?? string.Empty;
             NotesTextBox.Text = entry.Notes ?? string.Empty;
@@ -914,8 +936,7 @@ namespace RdpManager
             PortTextBox.Text = "3389";
             UserTextBox.Text = string.Empty;
             PasswordBox.Password = string.Empty;
-            SetComboSelectedTag(EntryTransportComboBox, "Direct");
-            EntryJumpHostProfileComboBox.SelectedItem = null;
+            EntryProxyComboBox.SelectedItem = FindProxyOption(TransportMode.Direct, string.Empty);
             GroupTextBox.Text = string.Empty;
             TagsTextBox.Text = string.Empty;
             NotesTextBox.Text = string.Empty;
@@ -947,7 +968,7 @@ namespace RdpManager
             SettingsOverwritePasswordCheckBox.IsChecked = _settings.OverwritePasswordFromProvider;
             SettingsImportOnlyOnlineCheckBox.IsChecked = _settings.ImportOnlyOnline;
 
-            SetComboSelectedTag(EntryTransportComboBox, "Direct");
+            RebuildEntryProxyOptions();
             UpdateSettingsSummary();
         }
 
@@ -955,6 +976,7 @@ namespace RdpManager
         {
             _entries = CsvStorage.Load(path);
             MetadataStorage.Apply(path, _entries);
+            UpdateEntryProxyLabels();
             _currentEntriesPage = 1;
             ConfigureEntriesView();
             _currentFilePath = path;
@@ -1123,6 +1145,8 @@ namespace RdpManager
                 StartNewJumpHostProfile();
             }
 
+            RebuildEntryProxyOptions();
+            UpdateEntryProxyLabels();
             UpdateTransportEditorState();
             UpdateJumpHostEditorState();
             UpdateSettingsSummary();
@@ -1135,10 +1159,14 @@ namespace RdpManager
             JumpHostHostTextBox.Text = profile == null ? string.Empty : profile.Host ?? string.Empty;
             JumpHostPortTextBox.Text = profile == null ? "22" : NormalizePositiveNumber(profile.Port, 22).ToString();
             JumpHostUserTextBox.Text = profile == null ? string.Empty : profile.User ?? string.Empty;
-            SetComboSelectedTag(JumpHostAuthModeComboBox, profile != null && profile.AuthMode == JumpHostAuthMode.Agent ? "Agent" : "EmbeddedPrivateKey");
+            SetComboSelectedTag(JumpHostAuthModeComboBox, "Password");
             JumpHostHostKeyFingerprintTextBox.Text = profile == null ? string.Empty : profile.HostKeyFingerprint ?? string.Empty;
             JumpHostConnectTimeoutTextBox.Text = profile == null ? "10" : NormalizePositiveNumber(profile.ConnectTimeoutSeconds, 10).ToString();
             JumpHostKeepAliveTextBox.Text = profile == null ? "30" : NormalizePositiveNumber(profile.KeepAliveSeconds, 30).ToString();
+            if (JumpHostPasswordBox != null)
+            {
+                JumpHostPasswordBox.Password = string.Empty;
+            }
             SetJumpHostTestStatus("SSH test not run yet.", new SolidColorBrush(Color.FromRgb(105, 120, 142)));
             UpdateJumpHostEditorState();
         }
@@ -1155,10 +1183,14 @@ namespace RdpManager
             JumpHostHostTextBox.Text = string.Empty;
             JumpHostPortTextBox.Text = "22";
             JumpHostUserTextBox.Text = string.Empty;
-            SetComboSelectedTag(JumpHostAuthModeComboBox, "EmbeddedPrivateKey");
+            SetComboSelectedTag(JumpHostAuthModeComboBox, "Password");
             JumpHostHostKeyFingerprintTextBox.Text = string.Empty;
             JumpHostConnectTimeoutTextBox.Text = "10";
             JumpHostKeepAliveTextBox.Text = "30";
+            if (JumpHostPasswordBox != null)
+            {
+                JumpHostPasswordBox.Password = string.Empty;
+            }
             SetJumpHostTestStatus("SSH test not run yet.", new SolidColorBrush(Color.FromRgb(105, 120, 142)));
             UpdateJumpHostEditorState();
         }
@@ -1169,14 +1201,14 @@ namespace RdpManager
             var user = (JumpHostUserTextBox.Text ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(host))
             {
-                MessageBox.Show(this, "Jump host cannot be empty.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, "Proxy server host cannot be empty.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Warning);
                 JumpHostHostTextBox.Focus();
                 return null;
             }
 
             if (string.IsNullOrWhiteSpace(user))
             {
-                MessageBox.Show(this, "Jump host user cannot be empty.", "Jump Hosts", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, "Proxy server user cannot be empty.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Warning);
                 JumpHostUserTextBox.Focus();
                 return null;
             }
@@ -1196,17 +1228,14 @@ namespace RdpManager
             profile.Host = host;
             profile.Port = NormalizePositiveNumber(JumpHostPortTextBox.Text, 22);
             profile.User = user;
-            profile.AuthMode = GetSelectedJumpHostAuthMode();
-            profile.UseAgent = profile.AuthMode == JumpHostAuthMode.Agent;
+            profile.AuthMode = JumpHostAuthMode.Password;
+            profile.UseAgent = false;
             profile.StrictHostKeyCheckingMode = "Ask";
             profile.HostKeyFingerprint = (JumpHostHostKeyFingerprintTextBox.Text ?? string.Empty).Trim();
             profile.ConnectTimeoutSeconds = NormalizePositiveNumber(JumpHostConnectTimeoutTextBox.Text, 10);
             profile.KeepAliveSeconds = NormalizePositiveNumber(JumpHostKeepAliveTextBox.Text, 30);
-            if (profile.AuthMode == JumpHostAuthMode.Agent)
-            {
-                profile.SecretRefId = string.Empty;
-                profile.ImportedKeyLabel = string.Empty;
-            }
+            profile.RuntimePassword = GetJumpHostPasswordInput();
+            profile.ImportedKeyLabel = string.Empty;
 
             return profile;
         }
@@ -1236,38 +1265,43 @@ namespace RdpManager
 
         private void UpdateJumpHostEditorState()
         {
-            var authMode = GetSelectedJumpHostAuthMode();
             var hasSelectedProfile = _editingJumpHostProfile != null && !string.IsNullOrWhiteSpace(_editingJumpHostProfile.Id);
-            var hasStoredKey = hasSelectedProfile && !string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId) && SecretVault.HasSecret(_editingJumpHostProfile.SecretRefId);
+            var hasStoredSecret = hasSelectedProfile &&
+                                  !string.IsNullOrWhiteSpace(_editingJumpHostProfile.SecretRefId) &&
+                                  SecretVault.HasSecret(_editingJumpHostProfile.SecretRefId);
+            var hasStoredPassword = hasStoredSecret && SecretVault.GetSecretKind(_editingJumpHostProfile.SecretRefId) == SecretKind.SshPassword;
 
             if (JumpHostKeyStatusTextBlock != null)
             {
-                if (authMode == JumpHostAuthMode.Agent)
-                {
-                    JumpHostKeyStatusTextBlock.Text = "Agent mode selected. The app expects ssh-agent to hold the identity.";
-                }
-                else if (hasStoredKey)
-                {
-                    JumpHostKeyStatusTextBlock.Text = string.IsNullOrWhiteSpace(_editingJumpHostProfile.ImportedKeyLabel)
-                        ? "Stored securely"
-                        : "Stored securely: " + _editingJumpHostProfile.ImportedKeyLabel;
-                }
-                else
-                {
-                    JumpHostKeyStatusTextBlock.Text = hasSelectedProfile
-                        ? "No private key stored for this profile."
-                        : "Save the profile first, then import a private key.";
-                }
+                JumpHostKeyStatusTextBlock.Text = hasStoredPassword
+                    ? "Password stored securely for this proxy server."
+                    : hasSelectedProfile
+                        ? "No SSH password stored for this profile."
+                        : "Save the profile first, then enter an SSH password.";
+            }
+
+            if (JumpHostPasswordPanel != null)
+            {
+                JumpHostPasswordPanel.Visibility = Visibility.Visible;
+            }
+
+            if (JumpHostPasswordHintTextBlock != null)
+            {
+                JumpHostPasswordHintTextBlock.Text = hasStoredPassword
+                    ? "Leave blank to keep the stored password, or enter a new password to rotate it."
+                    : "Enter the SSH password, then save the profile.";
             }
 
             if (ImportJumpHostKeyButton != null)
             {
-                ImportJumpHostKeyButton.IsEnabled = authMode == JumpHostAuthMode.EmbeddedPrivateKey && hasSelectedProfile;
+                ImportJumpHostKeyButton.IsEnabled = false;
+                ImportJumpHostKeyButton.Visibility = Visibility.Collapsed;
             }
 
             if (ClearJumpHostKeyButton != null)
             {
-                ClearJumpHostKeyButton.IsEnabled = authMode == JumpHostAuthMode.EmbeddedPrivateKey && hasStoredKey;
+                ClearJumpHostKeyButton.Content = "Clear password";
+                ClearJumpHostKeyButton.IsEnabled = hasStoredPassword;
             }
 
             if (TestJumpHostProfileButton != null)
@@ -1289,9 +1323,9 @@ namespace RdpManager
 
         private void UpdateTransportEditorState()
         {
-            if (EntryJumpHostProfileComboBox != null)
+            if (EntryProxyComboBox != null)
             {
-                EntryJumpHostProfileComboBox.IsEnabled = GetSelectedEntryTransportMode() == TransportMode.SshTunnel;
+                EntryProxyComboBox.IsEnabled = true;
             }
         }
 
@@ -1307,24 +1341,143 @@ namespace RdpManager
 
         private TransportMode GetSelectedEntryTransportMode()
         {
-            var selectedTag = GetSelectedComboTag(EntryTransportComboBox);
-            return string.Equals(selectedTag, "SshTunnel", StringComparison.OrdinalIgnoreCase)
-                ? TransportMode.SshTunnel
-                : TransportMode.Direct;
+            var selectedOption = EntryProxyComboBox == null ? null : EntryProxyComboBox.SelectedItem as ProxyOption;
+            return selectedOption == null ? TransportMode.Direct : selectedOption.TransportMode;
         }
 
         private string GetSelectedJumpHostProfileId()
         {
-            var selectedProfile = EntryJumpHostProfileComboBox == null ? null : EntryJumpHostProfileComboBox.SelectedItem as JumpHostProfile;
-            return selectedProfile == null ? string.Empty : selectedProfile.Id ?? string.Empty;
+            var selectedOption = EntryProxyComboBox == null ? null : EntryProxyComboBox.SelectedItem as ProxyOption;
+            return selectedOption == null ? string.Empty : selectedOption.JumpHostProfileId ?? string.Empty;
+        }
+
+        private void RebuildEntryProxyOptions()
+        {
+            var selectedTransportMode = GetSelectedEntryTransportMode();
+            var selectedProfileId = GetSelectedJumpHostProfileId();
+
+            _entryProxyOptions.Clear();
+            _entryProxyOptions.Add(new ProxyOption
+            {
+                DisplayName = "Direct",
+                TransportMode = TransportMode.Direct,
+                JumpHostProfileId = string.Empty
+            });
+
+            foreach (var profile in _jumpHostProfiles)
+            {
+                _entryProxyOptions.Add(new ProxyOption
+                {
+                    DisplayName = profile.DisplayName,
+                    TransportMode = TransportMode.SshTunnel,
+                    JumpHostProfileId = profile.Id ?? string.Empty
+                });
+            }
+
+            if (EntryProxyComboBox != null)
+            {
+                EntryProxyComboBox.SelectedItem = FindProxyOption(selectedTransportMode, selectedProfileId) ??
+                                                  FindProxyOption(TransportMode.Direct, string.Empty);
+            }
+        }
+
+        private ProxyOption FindProxyOption(TransportMode transportMode, string jumpHostProfileId)
+        {
+            if (transportMode != TransportMode.SshTunnel)
+            {
+                return _entryProxyOptions.FirstOrDefault(option => option.TransportMode == TransportMode.Direct);
+            }
+
+            return _entryProxyOptions.FirstOrDefault(option =>
+                option.TransportMode == TransportMode.SshTunnel &&
+                string.Equals(option.JumpHostProfileId ?? string.Empty, jumpHostProfileId ?? string.Empty, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private string GetProxyDisplayName(string jumpHostProfileId)
+        {
+            var profile = FindJumpHostProfile(jumpHostProfileId);
+            return profile == null ? string.Empty : profile.DisplayName;
+        }
+
+        private void UpdateEntryProxyLabels()
+        {
+            foreach (var entry in _entries)
+            {
+                entry.ProxyDisplayName = entry.TransportMode == TransportMode.SshTunnel
+                    ? GetProxyDisplayName(entry.JumpHostProfileId)
+                    : string.Empty;
+            }
         }
 
         private JumpHostAuthMode GetSelectedJumpHostAuthMode()
         {
-            var selectedTag = GetSelectedComboTag(JumpHostAuthModeComboBox);
-            return string.Equals(selectedTag, "Agent", StringComparison.OrdinalIgnoreCase)
-                ? JumpHostAuthMode.Agent
-                : JumpHostAuthMode.EmbeddedPrivateKey;
+            return JumpHostAuthMode.Password;
+        }
+
+        private string GetJumpHostPasswordInput()
+        {
+            return JumpHostPasswordBox == null ? string.Empty : (JumpHostPasswordBox.Password ?? string.Empty);
+        }
+
+        private bool TryPersistJumpHostSecret(JumpHostProfile profile)
+        {
+            if (profile == null)
+            {
+                return false;
+            }
+
+            if (profile.AuthMode == JumpHostAuthMode.Agent)
+            {
+                profile.RuntimePassword = string.Empty;
+                return true;
+            }
+
+            var secretKind = SecretVault.GetSecretKind(profile.SecretRefId);
+            if (profile.AuthMode == JumpHostAuthMode.Password)
+            {
+                var password = profile.RuntimePassword ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(password))
+                {
+                    profile.SecretRefId = SecretVault.SaveSecret(profile.SecretRefId, SecretKind.SshPassword, password);
+                    profile.RuntimePassword = string.Empty;
+                    if (JumpHostPasswordBox != null)
+                    {
+                        JumpHostPasswordBox.Password = string.Empty;
+                    }
+
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(profile.SecretRefId) &&
+                    SecretVault.HasSecret(profile.SecretRefId) &&
+                    secretKind == SecretKind.SshPassword)
+                {
+                    return true;
+                }
+
+                MessageBox.Show(this, "Enter an SSH password before saving this profile.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Warning);
+                if (JumpHostPasswordBox != null)
+                {
+                    JumpHostPasswordBox.Focus();
+                }
+
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(profile.SecretRefId) &&
+                SecretVault.HasSecret(profile.SecretRefId) &&
+                secretKind == SecretKind.SshPrivateKey)
+            {
+                return true;
+            }
+
+            MessageBox.Show(this, "Import a private key before saving this profile.", "Proxy Servers", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (ImportJumpHostKeyButton != null)
+            {
+                ImportJumpHostKeyButton.Focus();
+            }
+
+            return false;
         }
 
         private static string NormalizePort(string rawPort)
@@ -1495,7 +1648,7 @@ namespace RdpManager
                 var profile = FindJumpHostProfile(entry.JumpHostProfileId);
                 if (profile == null)
                 {
-                    throw new InvalidOperationException("The selected jump host profile could not be found.");
+                    throw new InvalidOperationException("The selected proxy server profile could not be found.");
                 }
 
                 SshTunnelManager.Launch(entry, profile);
@@ -2048,7 +2201,7 @@ namespace RdpManager
             SettingsPathTextBlock.Text = "Settings: " + SettingsStorage.GetSettingsPath();
             if (JumpHostsPathTextBlock != null)
             {
-                JumpHostsPathTextBlock.Text = "Jump hosts: " + JumpHostProfileStorage.GetProfilesPath();
+                JumpHostsPathTextBlock.Text = "Proxy servers: " + JumpHostProfileStorage.GetProfilesPath();
             }
 
             if (SecretVaultPathTextBlock != null)
@@ -2061,7 +2214,7 @@ namespace RdpManager
                 : "Saved token: not stored";
             if (JumpHostCountTextBlock != null)
             {
-                JumpHostCountTextBlock.Text = string.Format("Jump host profiles: {0}", _jumpHostProfiles.Count);
+                JumpHostCountTextBlock.Text = string.Format("Proxy server profiles: {0}", _jumpHostProfiles.Count);
             }
 
             if (AppVersionTextBlock != null)

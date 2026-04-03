@@ -39,6 +39,10 @@
     <Reference Include="PresentationFramework">
       <Private>False</Private>
     </Reference>
+    <Reference Include="Renci.SshNet">
+      <HintPath>packages\SSH.NET.2020.0.2\lib\net40\Renci.SshNet.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System">
       <Private>False</Private>
     </Reference>
@@ -96,6 +100,7 @@
     <Compile Include="Models\JumpHostAuthMode.cs" />
     <Compile Include="Models\JumpHostProfile.cs" />
     <Compile Include="Models\PagedResult.cs" />
+    <Compile Include="Models\ProxyOption.cs" />
     <Compile Include="Models\RdpEntry.cs" />
     <Compile Include="Models\SecretKind.cs" />
     <Compile Include="Models\SecretRecord.cs" />

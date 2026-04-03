@@ -12,7 +12,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Toi muon sua thong tin va connect ngay.
 - Toi muon tao entry moi ma khong ghi de entry cu.
 - Toi muon check nhanh host nao dang reachable tu may hien tai.
-- Toi muon chon connection mode `Direct` hoac `SSH Tunnel` ma khong can sua CSV.
+- Toi muon chon `Direct` hoac `Proxy server` ma khong can sua CSV.
 
 ## Layout
 
@@ -49,6 +49,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Port
 - User
 - Password (masked)
+- Proxy
 - Status
 - Health
 - Action
@@ -64,6 +65,7 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - Click `Host` -> copy host vao clipboard
 - Click `User` -> copy user vao clipboard
 - Click `Password` -> copy password thuc vao clipboard
+- Doi `Proxy` ngay trong row bang dropdown inline
 - Double-click row khong duoc phep auto launch RDP
 - Chi nut `Connect` o row hoac `Connect selected` moi duoc mo session
 - `Check selected` va `Check page` chi cap nhat health metadata, khong mo RDP
@@ -75,8 +77,8 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - `HostName` la display label, co the de trong
 - Password duoc luu plain text theo yeu cau business hien tai
 - `Group`, `Tags`, `Notes` la local metadata, khong vao CSV
-- `TransportMode` mac dinh la `Direct`
-- Neu `TransportMode = SSH Tunnel` thi `JumpHostProfile` la required
+- `Proxy` mac dinh la `Direct`
+- Neu `Proxy != Direct` thi app map sang `SSH Tunnel` + `Proxy server profile`
 
 ## Editor behavior
 
@@ -85,7 +87,8 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - `Apply entry` o edit mode phai update row dang edit.
 - Sau khi create thanh cong, form co the reset ve create mode de nhap tiep.
 - Search phai match ca `Group`, `Tags`, va `Notes`.
-- SSH transport config khong duoc chen vao CSV, chi luu trong metadata/settings layer.
+- Cau hinh proxy khong duoc chen vao CSV, chi luu trong metadata/settings layer.
+- Editor dung 1 dropdown `Proxy` duy nhat, khong lo transport details cho user cuoi.
 
 ## States
 
@@ -115,3 +118,5 @@ Day la tab trung tam cua app. Moi thao tac local phai co the bat dau tu day.
 - User co the thuc hien TCP health check tren item chon hoac page hien tai.
 - Filter toolbar khong duoc chiem qua nhieu chieu ngang; phai giu doc duoc o do phan giai hien tai.
 - Title bar phai lien visual voi UI con van ho tro drag, maximize, minimize, close.
+- Cot `Proxy` phai cho phep doi `Direct` hoac `Proxy server` ngay tren grid ma khong mo editor.
+- Footer `Check page`, `Previous`, `Next`, `Apply entry`, `Clear form` phai nam trong viewport o layout hien tai.
