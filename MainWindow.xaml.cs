@@ -34,6 +34,7 @@ namespace RdpManager
         private readonly ObservableCollection<ProxyOption> _entryProxyOptions = new ObservableCollection<ProxyOption>();
         private readonly ObservableCollection<string> _connectionGroupOptions = new ObservableCollection<string>();
         private string _currentFilePath;
+        private string _currentCsvExchangePath;
         private bool _isDirty;
         private bool _isCreatingNew = true;
         private bool _editorDirty;
@@ -74,15 +75,17 @@ namespace RdpManager
             ConnectionsGroupFilterComboBox.ItemsSource = _connectionGroupOptions;
             JumpHostProfilesListBox.ItemsSource = _jumpHostProfiles;
             EntryProxyComboBox.ItemsSource = _entryProxyOptions;
-            _currentFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "clients.csv");
+            _currentFilePath = SqliteStorage.GetDatabasePath();
+            _currentCsvExchangePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "clients.csv");
             _settings = SettingsStorage.Load();
 
             ApplySettingsToUi();
+            SqliteStorage.EnsureInitialized(_currentFilePath);
+            SqliteStorage.MigrateLegacyDataIfNeeded(_currentFilePath, _currentCsvExchangePath, JumpHostProfileStorage.GetLegacyProfilesPath());
             LoadJumpHostProfiles();
             UpdateVersionText();
 
-            CsvStorage.EnsureFileExists(_currentFilePath);
-            LoadEntries(_currentFilePath);
+            LoadEntriesFromDatabase();
             UpdateWindowTitle();
             RdpLauncher.CleanupTemporaryFiles();
             SshTunnelManager.CleanupTemporaryFiles();
@@ -106,20 +109,20 @@ namespace RdpManager
             {
                 Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
                 CheckFileExists = false,
-                FileName = Path.GetFileName(_currentFilePath),
-                InitialDirectory = GetInitialDirectory(_currentFilePath)
+                FileName = Path.GetFileName(_currentCsvExchangePath),
+                InitialDirectory = GetInitialDirectory(_currentCsvExchangePath)
             };
 
             if (dialog.ShowDialog(this) == true)
             {
                 CsvStorage.EnsureFileExists(dialog.FileName);
-                LoadEntries(dialog.FileName);
+                ImportEntriesFromCsv(dialog.FileName);
             }
         }
 
         private void SaveButton_OnClick(object sender, RoutedEventArgs e)
         {
-            SaveEntries(_currentFilePath);
+            SaveDatabase();
         }
 
         private void SaveAsButton_OnClick(object sender, RoutedEventArgs e)
@@ -127,15 +130,15 @@ namespace RdpManager
             var dialog = new SaveFileDialog
             {
                 Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
-                FileName = Path.GetFileName(_currentFilePath),
-                InitialDirectory = GetInitialDirectory(_currentFilePath),
+                FileName = Path.GetFileName(_currentCsvExchangePath),
+                InitialDirectory = GetInitialDirectory(_currentCsvExchangePath),
                 DefaultExt = ".csv",
                 AddExtension = true
             };
 
             if (dialog.ShowDialog(this) == true)
             {
-                SaveEntries(dialog.FileName);
+                ExportEntriesToCsv(dialog.FileName);
             }
         }
 
@@ -972,14 +975,12 @@ namespace RdpManager
             UpdateSettingsSummary();
         }
 
-        private void LoadEntries(string path)
+        private void LoadEntriesFromDatabase()
         {
-            _entries = CsvStorage.Load(path);
-            MetadataStorage.Apply(path, _entries);
+            _entries = SqliteStorage.LoadConnections(_currentFilePath);
             UpdateEntryProxyLabels();
             _currentEntriesPage = 1;
             ConfigureEntriesView();
-            _currentFilePath = path;
             _isDirty = false;
             _isCreatingNew = true;
             StartNewEntry();
@@ -987,15 +988,39 @@ namespace RdpManager
             UpdateSettingsSummary();
         }
 
-        private void SaveEntries(string path)
+        private void ImportEntriesFromCsv(string path)
+        {
+            var importedEntries = CsvStorage.Load(path);
+            MetadataStorage.Apply(path, importedEntries);
+            _entries = importedEntries;
+            _currentCsvExchangePath = path;
+            SqliteStorage.SaveConnections(_currentFilePath, _entries);
+            UpdateEntryProxyLabels();
+            _currentEntriesPage = 1;
+            ConfigureEntriesView();
+            _isDirty = false;
+            _isCreatingNew = true;
+            StartNewEntry();
+            UpdateWindowTitle();
+            UpdateSettingsSummary();
+        }
+
+        private void SaveDatabase()
         {
             ApplyPendingFormChangesIfNeeded();
-            CsvStorage.Save(_entries, path);
-            MetadataStorage.Save(path, _entries);
-            _currentFilePath = path;
+            SqliteStorage.SaveConnections(_currentFilePath, _entries);
             _isDirty = false;
             UpdateWindowTitle();
             UpdateSummary();
+        }
+
+        private void ExportEntriesToCsv(string path)
+        {
+            SaveDatabase();
+            CsvStorage.Save(_entries, path);
+            MetadataStorage.Save(path, _entries);
+            _currentCsvExchangePath = path;
+            UpdateSettingsSummary();
         }
 
         private void ApplyPendingFormChangesIfNeeded()
@@ -1056,7 +1081,7 @@ namespace RdpManager
 
             if (result == MessageBoxResult.Yes)
             {
-                SaveEntries(_currentFilePath);
+                SaveDatabase();
             }
 
             return true;
@@ -2197,11 +2222,11 @@ namespace RdpManager
                 return;
             }
 
-            CurrentCsvPathTextBlock.Text = "CSV: " + (_currentFilePath ?? "-");
+            CurrentCsvPathTextBlock.Text = "Database: " + (_currentFilePath ?? "-");
             SettingsPathTextBlock.Text = "Settings: " + SettingsStorage.GetSettingsPath();
             if (JumpHostsPathTextBlock != null)
             {
-                JumpHostsPathTextBlock.Text = "Proxy servers: " + JumpHostProfileStorage.GetProfilesPath();
+                JumpHostsPathTextBlock.Text = "Proxy servers: " + JumpHostProfileStorage.GetProfilesPath() + " (table)";
             }
 
             if (SecretVaultPathTextBlock != null)

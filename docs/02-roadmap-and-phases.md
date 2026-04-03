@@ -67,6 +67,7 @@ Current implemented scope:
 - Pagination local list `10 items/page`
 - Local metadata fields: `Notes`, `Group`, `Tags`
 - Local health check cho selected entry va current page
+- Runtime storage da chuyen sang `SQLite`; `CSV` chi con vai tro import/export
 
 Acceptance criteria:
 
@@ -104,14 +105,14 @@ Status: in progress, milestone 2 da implemented
 Target:
 
 - Them `Transport mode`: `Direct | SSH Tunnel`
-- Cho phep nhieu connection dung chung `Jump Host Profile`
+- Cho phep nhieu connection dung chung `Proxy server` profile
 - Mo `mstsc` thong qua local forwarded port
 - Luu SSH config ngoai CSV
 
 Deliverables:
 
-- `Jump Hosts` section trong Settings
-- `Transport` field trong Entry editor
+- `Proxy servers` section trong Settings
+- `Proxy` field trong Entry editor
 - Tunnel lifecycle manager
 - Tunnel cleanup khi `mstsc` dong
 - Secret storage cho SSH auth material
@@ -119,11 +120,12 @@ Deliverables:
 
 Current implemented scope:
 
-- Them `Transport = Direct | SSH Tunnel` tren local entry
-- Them `Jump Hosts` editor trong Settings
-- Them `JumpHostProfileStorage`, `SecretVault`, `TempKeyMaterializer`
-- Them `SshTunnelManager` mo `ssh.exe` an va cleanup khi `mstsc` dong
-- Them `Test SSH` bang flow forward ngan de verify auth + forwarding
+- Them `Proxy = Direct | Proxy server` tren local entry
+- Them `Proxy servers` editor trong Settings
+- Them `JumpHostProfileStorage`, `SecretVault`
+- Them `SshTunnelManager` cho password-based tunnel va cleanup khi `mstsc` dong
+- Them `Test SSH` bang ket noi SSH that
+- Tunnel mode tu bo qua cert mismatch popup cua `mstsc` khi connect qua loopback
 
 Current limitations:
 
@@ -141,7 +143,7 @@ Acceptance criteria:
 
 ## Phase 5: Hardening
 
-Status: backlog
+Status: in progress
 
 Target:
 
@@ -150,6 +152,12 @@ Target:
 - Backup/restore
 - Better release packaging
 - Manual regression checklist
+
+Current hardening scope:
+
+- Chuyen storage runtime sang `SQLite`
+- Giu backward compatibility voi `clients.csv`
+- Tiep tuc giu secret trong `DPAPI` thay vi dua vao DB
 
 ## Suggested milestone plan
 

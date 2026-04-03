@@ -70,36 +70,84 @@ Raw provider DTO:
 
 ## Storage strategy
 
-## Current files
+## Current runtime storage
 
-- `clients.csv`
-- `clients.meta.xml`
+- `%AppData%\\RdpManager\\rdp-manager.db`
+- `%AppData%\\RdpManager\\settings.user.xml`
+- `%AppData%\\RdpManager\\secrets.user.xml`
 
-## Proposed additional files
+## Compatibility files
 
-- `%AppData%\\RdpManager\\settings.user.json`
-- `%AppData%\\RdpManager\\logs\\`
-- `%AppData%\\RdpManager\\jump-hosts.user.json`
-- `%AppData%\\RdpManager\\secrets.user.json`
+- `clients.csv` de import/export
+- `clients.meta.xml` de import metadata legacy
+- `%AppData%\\RdpManager\\jump-hosts.user.xml` de migrate legacy proxy profiles mot lan
 
 ## Storage ownership
 
-- CSV chi chua RDP credential data can ban
-- `meta.xml` chua local metadata (`favorite`, `recent`, `group`, `tags`, `notes`, `health`) va provider metadata
+- `SQLite` la runtime source of truth cho connection data, local metadata, provider metadata, va proxy profiles
+- CSV chi con vai tro import/export va backup
 - user settings chua token, sync preference, UI preference
-- jump host profiles va SSH auth material phai nam trong protected store / user settings layer, khong duoc nam trong CSV
+- SSH auth material phai nam trong protected store / user settings layer, khong duoc nam trong CSV
 
 ## SSH secret storage design
 
-- `jump-hosts.user.json` chi chua metadata profile
-- `secrets.user.json` chua blob da duoc ma hoa bang user-scoped protected storage
-- app co the materialize private key ra temp file khi connect, nhung khong luu plaintext lau dai tren disk
+- `rdp-manager.db` chua metadata profile cua `Proxy server`
+- `secrets.user.xml` chua blob da duoc ma hoa bang user-scoped protected storage
+- app hien tai dung `SSH password auth` tren GUI; password khong duoc luu plaintext trong DB
 
 ## Why not put everything into CSV
 
 - CSV de import/export va debug tay
 - Provider metadata va token la du lieu co cau truc hon
 - Token khong nen song chung voi credential CSV
+- Khi co `Cloudmini sync`, `Notes`, `Group`, `Health`, va `Proxy server`, du lieu da vuot qua nguong hop voi CSV lam storage chinh
+
+## SQLite schema overview
+
+## connections
+
+- `entry_key`
+- `host_name`
+- `host`
+- `port`
+- `user_name`
+- `password`
+- `transport_mode`
+- `jump_host_profile_id`
+- `tunnel_target_host_override`
+- `tunnel_target_port_override`
+- `group_name`
+- `tags`
+- `notes`
+- `is_favorite`
+- `last_connected_utc`
+- `health_status`
+- `last_health_checked_utc`
+- `source_provider`
+- `source_id`
+- `source_status`
+- `source_location`
+- `source_created_at_utc`
+- `source_expired_at_utc`
+- `last_synced_utc`
+- `is_provider_managed`
+
+## proxy_profiles
+
+- `id`
+- `name`
+- `host`
+- `port`
+- `user_name`
+- `auth_mode`
+- `secret_ref_id`
+- `passphrase_secret_ref_id`
+- `imported_key_label`
+- `use_agent`
+- `strict_host_key_checking_mode`
+- `host_key_fingerprint`
+- `connect_timeout_seconds`
+- `keep_alive_seconds`
 
 ## Merge key design
 
@@ -138,6 +186,12 @@ Neu user da sua HostName local:
 - CSV 4 cot cu van phai doc duoc
 - CSV 5 cot moi la format chuan hien tai
 - Metadata migration phai backward-compatible
-- `Notes`, `Group`, `Tags`, va `Health` khong lam thay doi format CSV; chung chi song trong `meta.xml`
-- `TransportMode` co the duoc ghi vao metadata neu can backward-compatible voi CSV hien tai
-- `JumpHostProfileId` va tunnel settings phai song ngoai CSV de tranh lo SSH config
+- App se import `meta.xml` vao `SQLite` khi migrate
+- `Notes`, `Group`, `Tags`, va `Health` khong lam thay doi format CSV; khi export, chung se di cung file `meta.xml`
+- `JumpHostProfileId` va tunnel settings khong nam trong CSV
+
+## Migration rule
+
+- Neu `rdp-manager.db` chua co data va `clients.csv` ton tai, app se import CSV + metadata vao DB luc startup
+- Neu `proxy_profiles` table rong va `jump-hosts.user.xml` ton tai, app se import proxy profiles legacy vao DB luc startup
+- Sau migration, file cu khong bi xoa; chung chi tro thanh fallback/import source

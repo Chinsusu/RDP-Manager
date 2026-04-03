@@ -26,6 +26,11 @@ namespace RdpManager.Services
             var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             var fileName = Path.GetFileNameWithoutExtension(csvPath);
             var extension = Path.GetExtension(csvPath);
+            if (string.Equals(extension, ".db", StringComparison.OrdinalIgnoreCase))
+            {
+                extension = ".csv";
+            }
+
             var backupPath = Path.Combine(backupDirectory, string.Format("{0}.pre-sync-{1}{2}", fileName, timestamp, extension));
 
             CsvStorage.Save(entries, backupPath);

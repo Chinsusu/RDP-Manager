@@ -12,6 +12,8 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 - Them protected `SecretVault`, `TempKeyMaterializer`, `JumpHostProfileStorage`, va `SshTunnelManager`.
 - Them `Test SSH` cho `Jump Host Profile`, chay bang cung auth material va forward backend nhu flow tunnel that.
 - Them cot `Proxy` trong `Saved connections`, kem kha nang doi `Direct` hoac `Proxy server` ngay tren tung row.
+- Them `SqliteStorage` va schema `connections` / `proxy_profiles`.
+- Them migration tu `clients.csv + clients.meta.xml + jump-hosts.user.xml` sang `%AppData%\\RdpManager\\rdp-manager.db`.
 
 ### Changed
 
@@ -24,6 +26,8 @@ Tat ca thay doi dang ke cua du an se duoc ghi tai day.
 - Proxy server editor duoc rut gon va mac dinh theo huong `SSH password auth`; cac lua chon key/agent khong con hien tren GUI.
 - Entry editor va phan trang/footer duoc canh lai de khong bi day xuong khoi viewport o do phan giai hien tai.
 - SSH tunnel khi mo `mstsc` vao `127.0.0.1:<localPort>` se tu dat `authentication level:i:0` de bo qua canh bao cert mismatch chi trong tunnel mode; `Direct` van giu muc canh bao mac dinh.
+- Storage chinh cua app khong con la `CSV + XML`; app gio doc/ghi runtime vao `SQLite`, con `CSV` chi dung de import/export va backup.
+- `Import CSV` se nap du lieu vao DB; `Save database` se persist vao DB; `Export CSV` se xuat snapshot tu DB.
 
 ## [1.2.0-phase2-local-ops] - 2026-04-02
 
